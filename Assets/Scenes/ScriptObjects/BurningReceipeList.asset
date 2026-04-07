@@ -1,0 +1,18 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0d9297cd7a6a7745b9c34ed8777bafc, type: 3}
+  m_Name: BurningReceipeList
+  m_EditorClassIdentifier: 
+  list:
+  - input: {fileID: 11400000, guid: d06674abd14ae224ebd49f52e9799026, type: 2}
+    output: {fileID: 11400000, guid: bf88c055f134de543a176c89924bdba2, type: 2}
+    fryingTime: 3
