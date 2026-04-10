@@ -14,7 +14,7 @@ public class CuttingRecipe
 [CreateAssetMenu()]
 public class CuttingRecipeListSO : ScriptableObject
 {
-    public List<CuttingRecipe> list;
+    public List<CuttingRecipe> list; 
     public KitchenObjectSO GetOutput(KitchenObjectSO input)
     {
         foreach (CuttingRecipe recipe in list)

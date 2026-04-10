@@ -27,6 +27,7 @@ public class CountDownUI : MonoBehaviour
             {
                 PreNumber = nowNumber;
                 anim.SetTrigger(IS_SHAKE);
+                SoundManager.Instance.PlayCountDownSound();
             }
         }
     }
