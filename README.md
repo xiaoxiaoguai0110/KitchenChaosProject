@@ -21,7 +21,19 @@
 
 Player 2 的输入采用直接键盘轮询方式，不受 Input System 重绑定存档的影响，确保双人按键始终有效。
 
-## 本次修改内容
+## 单人模式（AI 队友）
+
+支持单人游玩，Player 2 将由 AI 控制。
+
+AI 的行为模式：
+- 随机选择场景中的柜台作为目标
+- 自动走向目标并与之交互（按 E）
+- 与真人玩家同步：仅在 GamePlaying 状态下行动
+- 交互后有冷却时间，防止过度触发
+
+**使用方法：** 在 Player (1) 对象上挂载 `AIPlayer` 组件即可。
+
+## 版本记录
 
 ### 1. 双人输入系统重构
 - Player 2 的移动、交互、操作全部改为直接键盘读取，绕过了 Unity New Input System 的绑定覆盖问题
@@ -33,6 +45,12 @@ Player 2 的输入采用直接键盘轮询方式，不受 Input System 重绑定
 
 ### 3. 音效系统
 - 为 CuttingCounter 增加了切菜音效（通过静态事件 `OnCut` 驱动）
+
+### v1.1 - AI 玩家系统
+- 新增 **AIPlayer** 组件，支持单人模式下 Player 2 由 AI 控制
+- AI 自动选择柜台为目标，移动并交互
+- AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
+- 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
 
 ## 项目架构
 

@@ -92,6 +92,11 @@ public class Player : KitchenObjectHolder
             return isWalking;
         }
     }
+
+    public void SetIsWalking(bool value)
+    {
+        isWalking = value;
+    }
     private void HandleMovement()
     {
         GameInput input = ResolvedInput;
