@@ -7,6 +7,7 @@ public class AIPlayer : MonoBehaviour
     {
         None,
         Cutting,
+        Waiting,
     }
 
     private Player player;
@@ -18,6 +19,8 @@ public class AIPlayer : MonoBehaviour
     private AIActionType currentAction = AIActionType.None;
     private int cutCount;
     private int cutCountMax;
+    private float waitTimer;
+    private float waitDuration;
 
     [SerializeField] private CuttingRecipeListSO cuttingRecipeList;
     [SerializeField] private FryingRecipeListSO fryingRecipeList;
@@ -31,6 +34,16 @@ public class AIPlayer : MonoBehaviour
     private void Start()
     {
         allCounters = FindObjectsOfType<BaseCounter>();
+
+        CapsuleCollider aiCollider = GetComponent<CapsuleCollider>();
+        Player player1 = Player.GetInstance(0);
+        if (player1 != null)
+        {
+            CapsuleCollider p1Collider = player1.GetComponent<CapsuleCollider>();
+            if (aiCollider != null && p1Collider != null)
+                Physics.IgnoreCollision(aiCollider, p1Collider);
+        }
+
         PickNewTarget();
     }
 
@@ -79,9 +92,33 @@ public class AIPlayer : MonoBehaviour
                 if (cutCount >= cutCountMax)
                     currentAction = AIActionType.None;
             }
+            else if (currentAction == AIActionType.Waiting)
+            {
+                waitTimer += Time.deltaTime;
+                SetWalking(false);
+
+                if (waitTimer >= waitDuration)
+                {
+                    targetCounter.Interact(player);
+
+                    if (player.IsHaveKitchenObject())
+                    {
+                        waitTimer = 0f;
+                        currentAction = AIActionType.None;
+                        actionCooldown = 0.5f;
+                        PickNewTarget();
+                    }
+                    else
+                    {
+                        actionCooldown = 0.3f;
+                    }
+                }
+            }
             else
             {
                 bool willCut = false;
+                bool willWait = false;
+
                 if (targetCounter is CuttingCounter && player.IsHaveKitchenObject())
                 {
                     KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
@@ -92,12 +129,24 @@ public class AIPlayer : MonoBehaviour
                         willCut = true;
                     }
                 }
+                else if (targetCounter is StoveCounter && player.IsHaveKitchenObject())
+                {
+                    KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
+                    if (fryingRecipeList != null && fryingRecipeList.TryGetFryingRecipe(heldSO, out FryingRecipe recipe))
+                    {
+                        waitDuration = recipe.fryingTime;
+                        waitTimer = 0f;
+                        willWait = true;
+                    }
+                }
 
                 targetCounter.Interact(player);
                 actionCooldown = 0.8f;
 
                 if (willCut)
                     currentAction = AIActionType.Cutting;
+                else if (willWait)
+                    currentAction = AIActionType.Waiting;
                 else
                     PickNewTarget();
             }

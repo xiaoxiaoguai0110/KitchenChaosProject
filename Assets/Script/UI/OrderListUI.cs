@@ -26,19 +26,19 @@ public class OrderListUI : MonoBehaviour
 
     private void UpdateUI()
     {
+        List<Transform> toDestroy = new List<Transform>();
         foreach(Transform child in recipeParent)
         {
             if(child != recipeUITemplate.transform)
-            {
-                Destroy(child.gameObject);
-            }
+                toDestroy.Add(child);
         }
+        foreach(Transform child in toDestroy)
+            Destroy(child.gameObject);
 
         List<RecipeSO> recipeSOList = OrderManager.Instance.GetOrderList();
         foreach(RecipeSO recipeSO in recipeSOList)
         {
-            RecipeUI recipeUI=GameObject.Instantiate(recipeUITemplate);
-            recipeUI.transform.SetParent(recipeParent);
+            RecipeUI recipeUI = GameObject.Instantiate(recipeUITemplate, recipeParent);
             recipeUI.gameObject.SetActive(true);
             recipeUI.UpdateUI(recipeSO);
         }

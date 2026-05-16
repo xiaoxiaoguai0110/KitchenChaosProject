@@ -61,7 +61,7 @@ public class OrderManager : MonoBehaviour
 
     private void OrderANewRecipe()
     {
-        if(orderCount >= orderMaxCount)
+        if(orderRecipeSOList.Count >= orderMaxCount)
         {
             return;
         }
@@ -104,7 +104,7 @@ public class OrderManager : MonoBehaviour
         if(list1.Count != list2.Count)
         {
             return false;
-        }
+        } 
 
         foreach(KitchenObjectSO item in list1)
         {
