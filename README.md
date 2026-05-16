@@ -53,6 +53,14 @@ AI 的行为模式：
 - AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
 - 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
 
+### v1.3 - AI 行为修复与订单系统 Bug 修复
+- **AIPlayer**：新增 `Waiting` 状态，AI 现在可以在 StoveCounter 等待食物烹饪完成
+- **AIPlayer**：新增 `Physics.IgnoreCollision`，解决 AI 与玩家碰撞导致的旋转/穿模问题
+- **AIPlayer**：修复 AI 无法从 StoveCounter 拿起煮熟食物的 bug
+- **OrderManager**：修复交付订单后 `orderCount` 累计导致无法继续生成新订单的 bug
+- **OrderListUI**：修复遍历时直接销毁子物体导致的 `InvalidOperationException`
+- **GameManager**：游戏时长从 20 秒调整为 60 秒
+
 ### v1.2 - AI 智能决策与完整切菜流程
 - AI 根据手上物品智能选择目标：空手→ContainerCounter、食材→CuttingCounter/StoveCounter、装盘→DeliveryCounter
 - AI 支持完整切菜流程（E 放食材 → F 多次切菜 → E 取回），引入 `AIActionType` 任务状态机
