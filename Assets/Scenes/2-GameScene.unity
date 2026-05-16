@@ -6738,6 +6738,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1394b6e9b7266f54ab93b48a52a01c1c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cuttingRecipeList: {fileID: 11400000, guid: 8d9fb1244a1689d4f8bb65e563c58b91, type: 2}
+  fryingRecipeList: {fileID: 11400000, guid: aeb454531f26f6a4fabe0340d3327014, type: 2}
 --- !u!4 &1030799228 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1562545316051293255, guid: 9935d3d7771c5ae4a8aa495f58c5c225,

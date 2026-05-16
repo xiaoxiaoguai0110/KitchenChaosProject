@@ -26,8 +26,9 @@ Player 2 的输入采用直接键盘轮询方式，不受 Input System 重绑定
 支持单人游玩，Player 2 将由 AI 控制。
 
 AI 的行为模式：
-- 随机选择场景中的柜台作为目标
-- 自动走向目标并与之交互（按 E）
+- 根据手上物品智能选择目标柜台（空手→ContainerCounter、食材→CuttingCounter/StoveCounter、装盘→DeliveryCounter）
+- 自动走向目标并与之交互
+- 支持完整切菜流程：走到 CuttingCounter → E 放食材 → F 多次切菜 → E 取回
 - 与真人玩家同步：仅在 GamePlaying 状态下行动
 - 交互后有冷却时间，防止过度触发
 
@@ -51,6 +52,12 @@ AI 的行为模式：
 - AI 自动选择柜台为目标，移动并交互
 - AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
 - 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
+
+### v1.2 - AI 智能决策与完整切菜流程
+- AI 根据手上物品智能选择目标：空手→ContainerCounter、食材→CuttingCounter/StoveCounter、装盘→DeliveryCounter
+- AI 支持完整切菜流程（E 放食材 → F 多次切菜 → E 取回），引入 `AIActionType` 任务状态机
+- 转向算法从 `Slerp` 改为 `RotateTowards`，修复角落抽搐问题
+- 修复 `PickNewTarget` 空列表崩溃 bug
 
 ## 项目架构
 
