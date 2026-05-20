@@ -47,12 +47,12 @@ public class KitchenObjectHolder : MonoBehaviour
     {
         if (sourceHolder.GetKitchenObject() == null)
         {
-            Debug.LogWarning("Ô´³ÖÓÐÕßÉÏ²»´æÔÚÊ¯²Ä£¬×ªÒÆÊ§°Ü");
+            Debug.LogWarning("Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï²ï¿½ï¿½ï¿½ï¿½ï¿½Ê¯ï¿½Ä£ï¿½×ªï¿½ï¿½Ê§ï¿½ï¿½");
             return;
         }
         if (targetHolder.GetKitchenObject() != null)
         {
-            Debug.LogWarning("Ä¿±ê³ÖÓÐÕßÉÏ´æÔÚÊ¯²Ä£¬×ªÒÆÊ§°Ü");
+            Debug.LogWarning("Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï´ï¿½ï¿½ï¿½Ê¯ï¿½Ä£ï¿½×ªï¿½ï¿½Ê§ï¿½ï¿½");
             return;
         }
         targetHolder.AddKitchenObject(sourceHolder.GetKitchenObject());
@@ -71,7 +71,7 @@ public class KitchenObjectHolder : MonoBehaviour
         this.kitchenObject = null;
     }
 
-    public void DestoryKitchenObject()
+    public void DestroyKitchenObject()
     {
         Destroy(kitchenObject.gameObject);
         this.kitchenObject = null;

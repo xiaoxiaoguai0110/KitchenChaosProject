@@ -2,10 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-//²Ö¿âÀà¹ñÌ¨
+//ï¿½Ö¿ï¿½ï¿½ï¿½ï¿½Ì¨
 public class ContainerCounter : BaseCounter
 {
     [SerializeField] private KitchenObjectSO kitchenObjectSO;
+    public KitchenObjectSO KitchenObjectSO => kitchenObjectSO;
     [SerializeField]private ContainerCounterVisual containerCounterVisiual;
 
     

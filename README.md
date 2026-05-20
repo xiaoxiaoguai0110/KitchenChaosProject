@@ -26,9 +26,13 @@ Player 2 的输入采用直接键盘轮询方式，不受 Input System 重绑定
 支持单人游玩，Player 2 将由 AI 控制。
 
 AI 的行为模式：
-- 根据手上物品智能选择目标柜台（空手→ContainerCounter、食材→CuttingCounter/StoveCounter、装盘→DeliveryCounter）
+- 根据手上物品智能选择目标柜台（空手→ContainerCounter/PlatesCounter、食材→CuttingCounter/StoveCounter/ClearCounter、装盘→DeliveryCounter）
 - 自动走向目标并与之交互
 - 支持完整切菜流程：走到 CuttingCounter → E 放食材 → F 多次切菜 → E 取回
+- 支持完整烹饪流程：走到 StoveCounter → E 放食材 → 等待煮熟 → E 取回
+- 支持完整装盘流程：拿到盘子 → 找 ClearCounter 上的食材装盘 → 凑齐后送餐
+- 只送完整匹配订单的菜品，不会拿不完整的盘子去送餐
+- 按订单需求拿取原料，不再随机拿食材
 - 与真人玩家同步：仅在 GamePlaying 状态下行动
 - 交互后有冷却时间，防止过度触发
 
@@ -52,6 +56,17 @@ AI 的行为模式：
 - AI 自动选择柜台为目标，移动并交互
 - AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
 - 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
+
+### v1.4 - AI 代码重构与智能装盘、按订单需求做菜
+- **AIPlayer**：全面重构代码结构，`PickNewTarget` 拆分为 7 个独立子方法
+- **AIPlayer**：新增 `FindCountersWithPlatedFood`、`PickTargetWhenEmptyHanded`、`PickTargetWhenHoldingObject` 等方法
+- **AIPlayer**：新增 `HandleActionAtCounter` 独立处理到达目标后的交互逻辑
+- **AIPlayer**：新增 `IsPlateMatchingAnyOrder` 检查，只有完整匹配订单的盘子才送去上菜
+- **AIPlayer**：手上盘子不完整时不再送餐，改为继续去 ClearCounter 装食材
+- **AIPlayer**：按订单需求拿取原料，优先拿当前订单需要的食材
+- **ContainerCounter**：新增 `KitchenObjectSO` 公开属性供 AI 读取
+- **多个脚本**：修复 `Destory` → `Destroy` 拼写错误（8 处）
+- **CuttingCounter**：删除 `UnityEditor.Rendering.CameraUI` 引用，修复 Build 错误
 
 ### v1.3 - AI 行为修复与订单系统 Bug 修复
 - **AIPlayer**：新增 `Waiting` 状态，AI 现在可以在 StoveCounter 等待食物烹饪完成

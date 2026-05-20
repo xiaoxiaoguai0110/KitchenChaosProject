@@ -30,14 +30,14 @@ public class StoveCounter : BaseCounter
     public override void Interact(Player player)
     {
         if (player.IsHaveKitchenObject())
-        {//ÊÖÉÏÓÐÊ³²Ä
-         // »ñÈ¡Íæ¼Ò³ÖÓÐµÄ KitchenObjectSO
+        {//ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê³ï¿½ï¿½
+         // ï¿½ï¿½È¡ï¿½ï¿½Ò³ï¿½ï¿½Ðµï¿½ KitchenObjectSO
             KitchenObjectSO playerHeldSO = player.GetKitchenObject().GetKitchenObjectSO();
 
-            //Ìí¼ÓÕâÐÐ£¬´òÓ¡³öÍæ¼Ò³ÖÓÐµÄ¶ÔÏóÃû³Æ
-            Debug.Log($"Íæ¼Ò³ÖÓÐ: {playerHeldSO.name}", playerHeldSO);
+            //ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð£ï¿½ï¿½ï¿½Ó¡ï¿½ï¿½ï¿½ï¿½Ò³ï¿½ï¿½ÐµÄ¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+            Debug.Log($"ï¿½ï¿½Ò³ï¿½ï¿½ï¿½: {playerHeldSO.name}", playerHeldSO);
             if (IsHaveKitchenObject() == false)
-            {//µ±Ç°¹ñÌ¨ Îª¿Õ
+            {//ï¿½ï¿½Ç°ï¿½ï¿½Ì¨ Îªï¿½ï¿½
 
                 if (fryingRecipeList.TryGetFryingRecipe(player.GetKitchenObject().GetKitchenObjectSO(), out FryingRecipe fryingRecipe))
                 {
@@ -57,13 +57,13 @@ public class StoveCounter : BaseCounter
             }
             else
             {
-                Debug.Log("Ã»ÓÐÕÒµ½Åä·½£¡");
+                Debug.Log("Ã»ï¿½ï¿½ï¿½Òµï¿½ï¿½ä·½ï¿½ï¿½");
             }
         }
         else
-        {//ÊÖÉÏÃ»Ê³²Ä
+        {//ï¿½ï¿½ï¿½ï¿½Ã»Ê³ï¿½ï¿½
             if (IsHaveKitchenObject())
-            {//µ±Ç°¹ñÌ¨ ²»Îª¿Õ
+            {//ï¿½ï¿½Ç°ï¿½ï¿½Ì¨ ï¿½ï¿½Îªï¿½ï¿½
                 TurnToIdle();
                 TransferKitchenObject(this, player);
             }
@@ -85,7 +85,7 @@ public class StoveCounter : BaseCounter
                 progressBarUI.UpdateProgress(fryingTimer/ fryingRecipe.fryingTime);
                 if (fryingTimer >= fryingRecipe.fryingTime)
                 {
-                    DestoryKitchenObject();
+                    DestroyKitchenObject();
                     CreateKitchenObject(fryingRecipe.output.prefab);
                     state = StoveState.Burning;
 
@@ -104,7 +104,7 @@ public class StoveCounter : BaseCounter
                 }
                 if (fryingTimer >= fryingRecipe.fryingTime)
                 {
-                    DestoryKitchenObject();
+                    DestroyKitchenObject();
                     CreateKitchenObject(fryingRecipe.output.prefab);
                     TurnToIdle();
                 }
@@ -128,7 +128,7 @@ public class StoveCounter : BaseCounter
     {
         if(fryingRecipe == null)
         {
-            Debug.Log("ÎÞ·¨»ñÈ¡BurningµÄÊ³Æ×£¬ÎÞ·¨½øÐÐBurning");
+            Debug.Log("ï¿½Þ·ï¿½ï¿½ï¿½È¡Burningï¿½ï¿½Ê³ï¿½×£ï¿½ï¿½Þ·ï¿½ï¿½ï¿½ï¿½ï¿½Burning");
             TurnToIdle();
             return;
         }

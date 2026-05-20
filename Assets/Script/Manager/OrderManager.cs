@@ -117,6 +117,16 @@ public class OrderManager : MonoBehaviour
         return true;
     }
 
+    public bool IsPlateMatchingAnyOrder(PlateKitchenObject plateKitchenObject)
+    {
+        foreach (RecipeSO recipe in orderRecipeSOList)
+        {
+            if (IsCorrect(recipe, plateKitchenObject))
+                return true;
+        }
+        return false;
+    }
+
     public List<RecipeSO> GetOrderList()
     {
         return orderRecipeSOList;

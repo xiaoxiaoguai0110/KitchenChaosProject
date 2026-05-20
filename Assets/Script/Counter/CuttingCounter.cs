@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using static UnityEditor.Rendering.CameraUI;
 
 public class CuttingCounter : BaseCounter
 {
@@ -48,7 +47,7 @@ public class CuttingCounter : BaseCounter
 
                 if(cuttingCount == cuttingRecipe.cuttingCountMax)
                 {
-                    DestoryKitchenObject();
+                    DestroyKitchenObject();
                     CreateKitchenObject(cuttingRecipe.output.prefab);
                 }
 
