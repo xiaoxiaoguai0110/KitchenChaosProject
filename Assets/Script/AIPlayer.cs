@@ -44,6 +44,12 @@ public class AIPlayer : MonoBehaviour
                 Physics.IgnoreCollision(aiCollider, p1Collider);
         }
 
+        OrderManager.Instance.OnRecipeSpawned += OnFirstOrderSpawned;
+    }
+
+    private void OnFirstOrderSpawned(object sender, System.EventArgs e)
+    {
+        OrderManager.Instance.OnRecipeSpawned -= OnFirstOrderSpawned;
         PickNewTarget();
     }
 
@@ -142,12 +148,84 @@ public class AIPlayer : MonoBehaviour
             }
         }
 
-        if (neededIngredients.Count > 0)
+        List<KitchenObjectSO> existingIngredients = new List<KitchenObjectSO>();
+        foreach (BaseCounter counter in allCounters)
         {
+            if (counter is ClearCounter clearCounter && clearCounter.IsHaveKitchenObject())
+            {
+                KitchenObject obj = clearCounter.GetKitchenObject();
+                if (obj.TryGetComponent<PlateKitchenObject>(out PlateKitchenObject plate))
+                {
+                    foreach (KitchenObjectSO ingredient in plate.GetKitchenObjectSOList())
+                    {
+                        if (!existingIngredients.Contains(ingredient))
+                            existingIngredients.Add(ingredient);
+                    }
+                }
+                else
+                {
+                    KitchenObjectSO so = obj.GetKitchenObjectSO();
+                    if (!existingIngredients.Contains(so))
+                        existingIngredients.Add(so);
+                }
+            }
+        }
+
+        List<KitchenObjectSO> missingIngredients = new List<KitchenObjectSO>();
+        foreach (KitchenObjectSO needed in neededIngredients)
+        {
+            if (!existingIngredients.Contains(needed))
+                missingIngredients.Add(needed);
+        }
+
+        if (missingIngredients.Count > 0)
+        {
+            List<KitchenObjectSO> rawIngredients = new List<KitchenObjectSO>();
+            foreach (KitchenObjectSO missing in missingIngredients)
+            {
+                bool foundRaw = false;
+                foreach (BaseCounter counter in allCounters)
+                {
+                    if (counter is ContainerCounter containerCounter && containerCounter.KitchenObjectSO == missing)
+                    {
+                        rawIngredients.Add(missing);
+                        foundRaw = true;
+                        break;
+                    }
+                }
+                if (foundRaw) continue;
+
+                if (cuttingRecipeList != null)
+                {
+                    foreach (CuttingRecipe recipe in cuttingRecipeList.list)
+                    {
+                        if (recipe.output == missing)
+                        {
+                            rawIngredients.Add(recipe.input);
+                            foundRaw = true;
+                            break;
+                        }
+                    }
+                }
+                if (foundRaw) continue;
+
+                if (fryingRecipeList != null)
+                {
+                    foreach (FryingRecipe recipe in fryingRecipeList.list)
+                    {
+                        if (recipe.output == missing)
+                        {
+                            rawIngredients.Add(recipe.input);
+                            break;
+                        }
+                    }
+                }
+            }
+
             foreach (BaseCounter counter in allCounters)
             {
                 if (counter is ContainerCounter containerCounter
-                    && neededIngredients.Contains(containerCounter.KitchenObjectSO))
+                    && rawIngredients.Contains(containerCounter.KitchenObjectSO))
                 {
                     availableCounters.Add(counter);
                 }
@@ -320,14 +398,21 @@ public class AIPlayer : MonoBehaviour
             }
 
             targetCounter.Interact(player);
-            actionCooldown = 0.8f;
 
             if (willCut)
+            {
                 currentAction = AIActionType.Cutting;
+                actionCooldown = 0.5f;
+            }
             else if (willWait)
+            {
                 currentAction = AIActionType.Waiting;
+            }
             else
+            {
+                actionCooldown = 0.15f;
                 PickNewTarget();
+            }
         }
     }
 

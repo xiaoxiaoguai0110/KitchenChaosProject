@@ -57,6 +57,13 @@ AI 的行为模式：
 - AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
 - 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
 
+### v1.5 - AI 智能原料追溯与死锁修复
+- **AIPlayer**：新增 `OnFirstOrderSpawned` 事件监听，AI 等第一个订单生成后才开始行动
+- **AIPlayer**：`PickIngredientsOrPlates` 新增原料追溯功能，当订单需要的成品食材（如 CookedMeat、SlicedTomato）没有对应的 ContainerCounter 时，自动查配方找到生原料（RawMeat、Tomato）
+- **AIPlayer**：`PickIngredientsOrPlates` 扫描 ClearCounter 上已有的食材，只拿真正缺的
+- **AIPlayer**：修复 AI 因 missingIngredients 找不到 ContainerCounter 而卡死的 bug
+- **AIPlayer**：优化冷却时间，普通交互从 0.8s 降至 0.15s
+
 ### v1.4 - AI 代码重构与智能装盘、按订单需求做菜
 - **AIPlayer**：全面重构代码结构，`PickNewTarget` 拆分为 7 个独立子方法
 - **AIPlayer**：新增 `FindCountersWithPlatedFood`、`PickTargetWhenEmptyHanded`、`PickTargetWhenHoldingObject` 等方法
