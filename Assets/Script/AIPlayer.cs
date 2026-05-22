@@ -3,9 +3,10 @@ using UnityEngine;
 
 public class AIPlayer : MonoBehaviour
 {
-    private enum AIActionType
+    private enum AIState
     {
-        None,
+        Idle,
+        MovingToTarget,
         Cutting,
         Waiting,
     }
@@ -13,12 +14,14 @@ public class AIPlayer : MonoBehaviour
     private Player player;
     private BaseCounter[] allCounters;
     private BaseCounter targetCounter;
-    private float actionCooldown;
     private bool isWalking;
 
-    private AIActionType currentAction = AIActionType.None;
+    private AIState currentState = AIState.Idle;
+    private float idleCooldown;
+
     private int cutCount;
     private int cutCountMax;
+    private float actionCooldown;
     private float waitTimer;
     private float waitDuration;
 
@@ -51,6 +54,8 @@ public class AIPlayer : MonoBehaviour
     {
         OrderManager.Instance.OnRecipeSpawned -= OnFirstOrderSpawned;
         PickNewTarget();
+        if (targetCounter != null)
+            currentState = AIState.MovingToTarget;
     }
 
     private void Update()
@@ -61,16 +66,39 @@ public class AIPlayer : MonoBehaviour
             return;
         }
 
-        if (actionCooldown > 0)
+        switch (currentState)
         {
-            actionCooldown -= Time.deltaTime;
-            SetWalking(false);
+            case AIState.Idle: UpdateIdle(); break;
+            case AIState.MovingToTarget: UpdateMovingToTarget(); break;
+            case AIState.Cutting: UpdateCutting(); break;
+            case AIState.Waiting: UpdateWaiting(); break;
+        }
+    }
+
+    private void ChangeState(AIState newState)
+    {
+        currentState = newState;
+    }
+
+    private void UpdateIdle()
+    {
+        if (idleCooldown > 0)
+        {
+            idleCooldown -= Time.deltaTime;
             return;
         }
 
+        PickNewTarget();
+
+        if (targetCounter != null)
+            ChangeState(AIState.MovingToTarget);
+    }
+
+    private void UpdateMovingToTarget()
+    {
         if (targetCounter == null)
         {
-            PickNewTarget();
+            ChangeState(AIState.Idle);
             return;
         }
 
@@ -86,7 +114,105 @@ public class AIPlayer : MonoBehaviour
         }
         else
         {
-            HandleActionAtCounter();
+            OnReachedTarget();
+        }
+    }
+
+    private void OnReachedTarget()
+    {
+        SetWalking(false);
+        transform.forward = (targetCounter.transform.position - transform.position).normalized;
+
+        bool willCut = false;
+        bool willWait = false;
+
+        if (targetCounter is CuttingCounter && player.IsHaveKitchenObject())
+        {
+            KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
+            if (cuttingRecipeList != null && cuttingRecipeList.TryGetCuttingRecipe(heldSO, out CuttingRecipe recipe))
+            {
+                cutCountMax = recipe.cuttingCountMax;
+                cutCount = 0;
+                willCut = true;
+            }
+        }
+        else if (targetCounter is StoveCounter && player.IsHaveKitchenObject())
+        {
+            KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
+            if (fryingRecipeList != null && fryingRecipeList.TryGetFryingRecipe(heldSO, out FryingRecipe recipe))
+            {
+                waitDuration = recipe.fryingTime;
+                waitTimer = 0f;
+                willWait = true;
+            }
+        }
+
+        targetCounter.Interact(player);
+
+        if (willCut)
+        {
+            actionCooldown = 0.5f;
+            ChangeState(AIState.Cutting);
+        }
+        else if (willWait)
+        {
+            ChangeState(AIState.Waiting);
+        }
+        else
+        {
+            targetCounter = null;
+            idleCooldown = 0.15f;
+            ChangeState(AIState.Idle);
+        }
+    }
+
+    private void UpdateCutting()
+    {
+        SetWalking(false);
+
+        if (actionCooldown > 0)
+        {
+            actionCooldown -= Time.deltaTime;
+            return;
+        }
+
+        targetCounter.InteractOperate(player);
+        cutCount++;
+
+        if (cutCount >= cutCountMax)
+        {
+            targetCounter.Interact(player);
+            targetCounter = null;
+            idleCooldown = 0.15f;
+            ChangeState(AIState.Idle);
+        }
+        else
+        {
+            actionCooldown = 0.5f;
+        }
+    }
+
+    private void UpdateWaiting()
+    {
+        waitTimer += Time.deltaTime;
+        SetWalking(false);
+
+        if (waitTimer >= waitDuration)
+        {
+            targetCounter.Interact(player);
+
+            if (player.IsHaveKitchenObject())
+            {
+                waitTimer = 0f;
+                targetCounter = null;
+                idleCooldown = 0.5f;
+                ChangeState(AIState.Idle);
+            }
+            else
+            {
+                idleCooldown = 0.3f;
+                ChangeState(AIState.Idle);
+            }
         }
     }
 
@@ -258,6 +384,13 @@ public class AIPlayer : MonoBehaviour
                         availableCounters.Add(counter);
             }
         }
+
+        if (availableCounters.Count == 0)
+        {
+            foreach (BaseCounter counter in allCounters)
+                if (counter is ContainerCounter)
+                    availableCounters.Add(counter);
+        }
     }
 
     private void PickTargetWhenHoldingObject(List<BaseCounter> availableCounters)
@@ -331,87 +464,6 @@ public class AIPlayer : MonoBehaviour
                 foreach (BaseCounter counter in allCounters)
                     if (counter is ClearCounter)
                         availableCounters.Add(counter);
-            }
-        }
-    }
-
-    private void HandleActionAtCounter()
-    {
-        SetWalking(false);
-        transform.forward = (targetCounter.transform.position - transform.position).normalized;
-
-        if (currentAction == AIActionType.Cutting)
-        {
-            targetCounter.InteractOperate(player);
-            cutCount++;
-            actionCooldown = 0.5f;
-
-            if (cutCount >= cutCountMax)
-                currentAction = AIActionType.None;
-        }
-        else if (currentAction == AIActionType.Waiting)
-        {
-            waitTimer += Time.deltaTime;
-            SetWalking(false);
-
-            if (waitTimer >= waitDuration)
-            {
-                targetCounter.Interact(player);
-
-                if (player.IsHaveKitchenObject())
-                {
-                    waitTimer = 0f;
-                    currentAction = AIActionType.None;
-                    actionCooldown = 0.5f;
-                    PickNewTarget();
-                }
-                else
-                {
-                    actionCooldown = 0.3f;
-                }
-            }
-        }
-        else
-        {
-            bool willCut = false;
-            bool willWait = false;
-
-            if (targetCounter is CuttingCounter && player.IsHaveKitchenObject())
-            {
-                KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
-                if (cuttingRecipeList != null && cuttingRecipeList.TryGetCuttingRecipe(heldSO, out CuttingRecipe recipe))
-                {
-                    cutCountMax = recipe.cuttingCountMax;
-                    cutCount = 0;
-                    willCut = true;
-                }
-            }
-            else if (targetCounter is StoveCounter && player.IsHaveKitchenObject())
-            {
-                KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
-                if (fryingRecipeList != null && fryingRecipeList.TryGetFryingRecipe(heldSO, out FryingRecipe recipe))
-                {
-                    waitDuration = recipe.fryingTime;
-                    waitTimer = 0f;
-                    willWait = true;
-                }
-            }
-
-            targetCounter.Interact(player);
-
-            if (willCut)
-            {
-                currentAction = AIActionType.Cutting;
-                actionCooldown = 0.5f;
-            }
-            else if (willWait)
-            {
-                currentAction = AIActionType.Waiting;
-            }
-            else
-            {
-                actionCooldown = 0.15f;
-                PickNewTarget();
             }
         }
     }

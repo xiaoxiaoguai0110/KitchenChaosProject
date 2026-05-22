@@ -1,115 +1,132 @@
 # KitchenChaos - 本地双人合作厨房模拟游戏
 
-基于 Unity 开发的本地双人合作厨房模拟游戏，灵感来源于《胡闹厨房》。玩家需要在限定时间内完成订单，通过配合协作来获得高分。
+基于 Unity 开发的本地双人合作厨房模拟游戏，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
+
+---
+
+## 项目亮点
+
+### 1. AI 队友系统（核心复杂度）
+单人模式下 Player 2 由 AI 控制，实现了完整的"观察-决策-执行"循环：
+
+**目标选择系统：**
+- 根据手上物品 + 当前订单智能决策下一步目标
+- 实时扫描场景中所有柜台的食材状态，避免重复拿取
+- 支持"原料追溯"——当订单需要加工后的成品（如 CookedMeat）时，自动反向查找配方链，追溯到对应的生原料（RawMeat）并完成加工流程
+- 使用 `list.Contains()` 做差集运算实现"订单需要的 - 台子上已有的 = 真正缺的"
+
+**行为状态机：**
+- 通过枚举 + 状态分支，实现了 Cutting（切菜循环）、Waiting（等待烹饪）、None（自由决策）三种行为模式
+- 到达目标柜台后根据柜台类型自动切换行为状态
+- 冷却系统防止多帧重复触发的交互冲突
+
+**技术挑战与解决方案：**
+- 首次交互后 0.8s 冷却导致 AI 频繁发呆 → 优化为 0.15s，连贯性大幅提升
+- `missingIngredients` 只包含成品食材，找不到对应的 ContainerCounter 导致死锁 → 新增配方反向查询
+- 订单生成前 AI 乱拿原料 → 改为事件驱动，监听到第一个订单后再行动
+- 代码膨胀（单文件 300+ 行）→ 重构拆分为 7 个语义化子方法
+
+### 2. OOP 架构设计
+- **多态继承体系**：`BaseCounter` 作为抽象基类，7 个子类各自重写 `Interact()` 实现不同柜台行为
+- **ScriptableObject 数据驱动**：食材属性、切菜配方、烹饪配方、订单模板全部配置化，无需修改代码即可扩展新菜品
+- **组件式设计**：AI 作为独立的 `MonoBehaviour` 组件挂载到 Player 上，通过 `Player.enabled = false` 禁用真人输入控制
+
+### 3. 事件驱动架构
+- 使用 C# `event` 关键字实现模块间解耦
+  - `OrderManager.OnRecipeSpawned` → OrderListUI 刷新 + AI 启动决策
+  - `CuttingCounter.OnCut` → SoundManager 播放音效
+  - `KitchenObjectHolder.OnDrop / OnPickup` → 全局物品拾取/放下音效
+- 避免直接依赖，新增 AI 等模块时不需要修改已有代码
+
+### 4. 双人输入系统
+- Player 1 使用 Unity New Input System（支持自定义键位）
+- Player 2 直接键盘轮询读取（`Input.GetKeyDown`），不受输入系统存档影响
+- 解决了"一个人改了键位，两个人的按键都受影响"的 bug
+
+### 5. 版本控制与工程实践
+- 语义化版本号（v1.1 ~ v1.5），每次更新有明确版本记录
+- 每次 commit 聚焦单一变更，commit message 规范化
+- 从单文件逐步重构为清晰的方法分拆，保证可维护性
+- SSH 部署，自动化推送流程
+
+---
 
 ## 游戏玩法
 
-1. 从 **ContainerCounter** 拿取食材
-2. 在 **CuttingCounter** 切菜
-3. 在 **StoveCounter** 烹饪
-4. 在 **ClearCounter** 将食材组合到盘子上
-5. 在 **DeliveryCounter** 送餐完成订单
+1. **拿食材** → ContainerCounter 获取原料
+2. **加工处理** → CuttingCounter 切菜 / StoveCounter 烹饪
+3. **组合装盘** → ClearCounter 将食材组合到盘子
+4. **完成订单** → DeliveryCounter 送餐
 
-## 双人操作
-
-| 操作 | Player 1 | Player 2 |
-|------|----------|----------|
-| 移动 | W / A / S / D | 8 / 4 / 5 / 6 |
-| 交互 | E | 7 |
-| 操作 | F | 9 |
-| 暂停 | Escape | Escape |
-
-Player 2 的输入采用直接键盘轮询方式，不受 Input System 重绑定存档的影响，确保双人按键始终有效。
-
-## 单人模式（AI 队友）
-
-支持单人游玩，Player 2 将由 AI 控制。
-
-AI 的行为模式：
-- 根据手上物品智能选择目标柜台（空手→ContainerCounter/PlatesCounter、食材→CuttingCounter/StoveCounter/ClearCounter、装盘→DeliveryCounter）
-- 自动走向目标并与之交互
-- 支持完整切菜流程：走到 CuttingCounter → E 放食材 → F 多次切菜 → E 取回
-- 支持完整烹饪流程：走到 StoveCounter → E 放食材 → 等待煮熟 → E 取回
-- 支持完整装盘流程：拿到盘子 → 找 ClearCounter 上的食材装盘 → 凑齐后送餐
-- 只送完整匹配订单的菜品，不会拿不完整的盘子去送餐
-- 按订单需求拿取原料，不再随机拿食材
-- 与真人玩家同步：仅在 GamePlaying 状态下行动
-- 交互后有冷却时间，防止过度触发
-
-**使用方法：** 在 Player (1) 对象上挂载 `AIPlayer` 组件即可。
+---
 
 ## 版本记录
 
-### 1. 双人输入系统重构
-- Player 2 的移动、交互、操作全部改为直接键盘读取，绕过了 Unity New Input System 的绑定覆盖问题
-- 同时支持主键盘数字行和小键盘
+### v1.5 - AI 原料追溯与死锁修复
+- 新增配方反向查询：AI 能自动将"成品需求"追溯为"原料需求"
+- 实时场景扫描：统计 ClearCounter 上已有食材，只拿真正缺的
+- 修复空目标死锁：`availableCounters` 为空时保底去 ContainerCounter
+- 冷却时间优化：0.8s → 0.15s，AI 行动更连贯
 
-### 2. Bug 修复
-- **OrderManager.IsCorrect**: 修复了订单验证逻辑中的 `list1.Contains(item)` 应为 `list2.Contains(item)` 的 bug，原代码导致所有送餐（数量匹配时）都会成功
-- **CuttingCounter**: 禁止将盘子放到切菜台上
+### v1.4 - AI 代码重构与智能装盘
+- 全面重构：`PickNewTarget` 拆分为 7 个语义化方法
+- `IsPlateMatchingAnyOrder` 检查：只送完整匹配订单的菜品
+- 按订单需求拿原料，不再随机拿食材
+- Build 修复：删除 `UnityEditor.Rendering.CameraUI` 引用 + 8 处 `Destory` → `Destroy`
 
-### 3. 音效系统
-- 为 CuttingCounter 增加了切菜音效（通过静态事件 `OnCut` 驱动）
+### v1.3 - AI 行为修复
+- 新增 Waiting 状态，支持 StoveCounter 等待烹饪
+- 碰撞修复：`Physics.IgnoreCollision` 防止 AI 与玩家碰撞旋转
+- 修复 OrderManager 订单生成上限 log 错误
+
+### v1.2 - AI 决策系统
+- 根据手上物品智能选目标（状态机初步实现）
+- 完整切菜流程 + RotateTowards 转向修复
 
 ### v1.1 - AI 玩家系统
-- 新增 **AIPlayer** 组件，支持单人模式下 Player 2 由 AI 控制
-- AI 自动选择柜台为目标，移动并交互
-- AI 与 GameManager 状态同步，仅在 GamePlaying 时行动
-- 为 Player 增加 `SetIsWalking()` 公开方法供 AI 控制动画
+- AIPlayer 组件首次引入，单人模式可用
 
-### v1.5 - AI 智能原料追溯与死锁修复
-- **AIPlayer**：新增 `OnFirstOrderSpawned` 事件监听，AI 等第一个订单生成后才开始行动
-- **AIPlayer**：`PickIngredientsOrPlates` 新增原料追溯功能，当订单需要的成品食材（如 CookedMeat、SlicedTomato）没有对应的 ContainerCounter 时，自动查配方找到生原料（RawMeat、Tomato）
-- **AIPlayer**：`PickIngredientsOrPlates` 扫描 ClearCounter 上已有的食材，只拿真正缺的
-- **AIPlayer**：修复 AI 因 missingIngredients 找不到 ContainerCounter 而卡死的 bug
-- **AIPlayer**：优化冷却时间，普通交互从 0.8s 降至 0.15s
+---
 
-### v1.4 - AI 代码重构与智能装盘、按订单需求做菜
-- **AIPlayer**：全面重构代码结构，`PickNewTarget` 拆分为 7 个独立子方法
-- **AIPlayer**：新增 `FindCountersWithPlatedFood`、`PickTargetWhenEmptyHanded`、`PickTargetWhenHoldingObject` 等方法
-- **AIPlayer**：新增 `HandleActionAtCounter` 独立处理到达目标后的交互逻辑
-- **AIPlayer**：新增 `IsPlateMatchingAnyOrder` 检查，只有完整匹配订单的盘子才送去上菜
-- **AIPlayer**：手上盘子不完整时不再送餐，改为继续去 ClearCounter 装食材
-- **AIPlayer**：按订单需求拿取原料，优先拿当前订单需要的食材
-- **ContainerCounter**：新增 `KitchenObjectSO` 公开属性供 AI 读取
-- **多个脚本**：修复 `Destory` → `Destroy` 拼写错误（8 处）
-- **CuttingCounter**：删除 `UnityEditor.Rendering.CameraUI` 引用，修复 Build 错误
+## 项目结构
 
-### v1.3 - AI 行为修复与订单系统 Bug 修复
-- **AIPlayer**：新增 `Waiting` 状态，AI 现在可以在 StoveCounter 等待食物烹饪完成
-- **AIPlayer**：新增 `Physics.IgnoreCollision`，解决 AI 与玩家碰撞导致的旋转/穿模问题
-- **AIPlayer**：修复 AI 无法从 StoveCounter 拿起煮熟食物的 bug
-- **OrderManager**：修复交付订单后 `orderCount` 累计导致无法继续生成新订单的 bug
-- **OrderListUI**：修复遍历时直接销毁子物体导致的 `InvalidOperationException`
-- **GameManager**：游戏时长从 20 秒调整为 60 秒
+```
+Assets/Script/
+├── AIPlayer.cs                 # AI 决策系统（10 个语义化方法）
+├── Player.cs                   # 玩家控制器
+├── KitchenObjectHolder.cs      # 物品持有基类
+├── KitchenObject.cs            # 物品基类
+├── PlateKitchenObject.cs       # 盘子（物品容器）
+├── Manager/
+│   ├── GameManager.cs          # 全局状态机
+│   ├── OrderManager.cs         # 订单系统
+│   ├── SoundManager.cs         # 音效管理
+│   └── MusicManager.cs         # 音乐管理
+├── Counter/
+│   ├── BaseCounter.cs          # 抽象基类
+│   ├── ContainerCounter.cs     # 原料箱
+│   ├── CuttingCounter.cs       # 切菜台
+│   ├── StoveCounter.cs         # 灶台（状态机：Idle/Frying/Burning）
+│   ├── ClearCounter.cs         # 操作台（食材组合逻辑）
+│   ├── PlatesCounter.cs        # 盘子生成器
+│   ├── DeliveryCounter.cs      # 送餐口
+│   └── TrashCounter.cs         # 垃圾桶
+├── ScriptObjects/              # 数据配置（ScriptableObject）
+└── UI/
+    ├── OrderListUI.cs          # 订单列表 UI
+    └── RecipeUI.cs             # 订单模板 UI
+```
 
-### v1.2 - AI 智能决策与完整切菜流程
-- AI 根据手上物品智能选择目标：空手→ContainerCounter、食材→CuttingCounter/StoveCounter、装盘→DeliveryCounter
-- AI 支持完整切菜流程（E 放食材 → F 多次切菜 → E 取回），引入 `AIActionType` 任务状态机
-- 转向算法从 `Slerp` 改为 `RotateTowards`，修复角落抽搐问题
-- 修复 `PickNewTarget` 空列表崩溃 bug
+---
 
-## 项目架构
+## 技术栈
 
-### 核心模块
-- **GameManager** - 全局状态机（WaitingToStart → CountDownToStart → GamePlaying → GameOver）
-- **GameInput** - 输入管理（Player 1 走 Input System，Player 2 走键盘轮询）
-- **OrderManager** - 订单生成与验证系统
-- **SoundManager** / **MusicManager** - 音效管理
-
-### 柜台系统（继承 BaseCounter）
-| 柜台 | 功能 |
+| 技术 | 用途 |
 |------|------|
-| ContainerCounter | 生成食材 |
-| CuttingCounter | 切菜 |
-| StoveCounter | 烹饪（状态机：Idle/Frying/Burning） |
-| ClearCounter | 放置/组合食材 |
-| PlatesCounter | 定时生成盘子 |
-| DeliveryCounter | 送餐 |
-| TrashCounter | 丢弃食材 |
-
-### 技术要点
-- **ScriptableObject** 数据驱动架构（食材/配方/烹饪流程配置化）
-- **OOP 多态**（BaseCounter virtual/override）
-- **C# 事件驱动** 实现 UI 与逻辑层解耦
-- **状态机模式** 管理游戏流程与烹饪状态
+| Unity 2022.3 | 游戏引擎 |
+| C# | 全部游戏逻辑 |
+| ScriptableObject | 数据驱动架构 |
+| Unity New Input System | Player 1 输入 |
+| Direct Input Polling | Player 2 输入 |
+| SSH / Git | 版本控制 |
+| C# Events | 模块通信 |
