@@ -33,4 +33,13 @@ public class PlateKitchenObject : KitchenObject
     {
         return kitchenObjectSOList;
     }
+
+    public bool CanAddKitchenObjectSO(KitchenObjectSO kitchenObjectSO)
+    {
+        if (kitchenObjectSOList.Contains(kitchenObjectSO))
+            return false;
+        if (validKitchenObjectSOList.Contains(kitchenObjectSO) == false)
+            return false;
+        return true;
+    }
 }

@@ -18,6 +18,7 @@ public class AIPlayer : MonoBehaviour
 
     private AIState currentState = AIState.Idle;
     private float idleCooldown;
+    private bool hasReceivedFirstOrder;
 
     private int cutCount;
     private int cutCountMax;
@@ -53,6 +54,7 @@ public class AIPlayer : MonoBehaviour
     private void OnFirstOrderSpawned(object sender, System.EventArgs e)
     {
         OrderManager.Instance.OnRecipeSpawned -= OnFirstOrderSpawned;
+        hasReceivedFirstOrder = true;
         PickNewTarget();
         if (targetCounter != null)
             currentState = AIState.MovingToTarget;
@@ -82,6 +84,9 @@ public class AIPlayer : MonoBehaviour
 
     private void UpdateIdle()
     {
+        if (hasReceivedFirstOrder == false)
+            return;
+
         if (idleCooldown > 0)
         {
             idleCooldown -= Time.deltaTime;
@@ -102,6 +107,14 @@ public class AIPlayer : MonoBehaviour
             return;
         }
 
+        if (IsTargetCounterBlocked())
+        {
+            targetCounter = null;
+            idleCooldown = 0;
+            ChangeState(AIState.Idle);
+            return;
+        }
+
         Vector3 dir = (targetCounter.transform.position - transform.position);
         dir.y = 0;
 
@@ -116,6 +129,32 @@ public class AIPlayer : MonoBehaviour
         {
             OnReachedTarget();
         }
+    }
+
+    private bool IsTargetCounterBlocked()
+    {
+        bool aiHasObject = player.IsHaveKitchenObject();
+        bool counterHasObject = targetCounter.IsHaveKitchenObject();
+
+        if (!aiHasObject || !counterHasObject)
+            return false;
+
+        bool aiHasPlate = player.GetKitchenObject().TryGetComponent<PlateKitchenObject>(out PlateKitchenObject aiPlate);
+        bool counterHasPlate = targetCounter.GetKitchenObject().TryGetComponent<PlateKitchenObject>(out PlateKitchenObject counterPlate);
+
+        if (aiHasPlate)
+        {
+            KitchenObjectSO counterSO = targetCounter.GetKitchenObject().GetKitchenObjectSO();
+            return !aiPlate.CanAddKitchenObjectSO(counterSO);
+        }
+
+        if (counterHasPlate)
+        {
+            KitchenObjectSO heldSO = player.GetKitchenObject().GetKitchenObjectSO();
+            return !counterPlate.CanAddKitchenObjectSO(heldSO);
+        }
+
+        return true;
     }
 
     private void OnReachedTarget()
@@ -147,7 +186,10 @@ public class AIPlayer : MonoBehaviour
             }
         }
 
+        bool hadObjectBeforeInteract = player.IsHaveKitchenObject();
         targetCounter.Interact(player);
+        bool hasObjectAfterInteract = player.IsHaveKitchenObject();
+        bool interactionChangedSomething = (hadObjectBeforeInteract != hasObjectAfterInteract);
 
         if (willCut)
         {
@@ -157,6 +199,12 @@ public class AIPlayer : MonoBehaviour
         else if (willWait)
         {
             ChangeState(AIState.Waiting);
+        }
+        else if (interactionChangedSomething)
+        {
+            targetCounter = null;
+            idleCooldown = 0.15f;
+            ChangeState(AIState.Idle);
         }
         else
         {

@@ -31,6 +31,8 @@ public class GameManager : MonoBehaviour
     private float gamePlayingTimeTotal;
 
     private bool isGamePause = false;
+    private bool countDownTimerReachedZero;
+    private bool gamePlayingTimerReachedZero;
 
     // Start is called before the first frame update
     private void Awake()
@@ -65,14 +67,32 @@ public class GameManager : MonoBehaviour
                 countDownToStartTimer -= Time.deltaTime;
                 if (countDownToStartTimer <= 0)
                 {
-                    TurnToGamePlaying();
+                    if (countDownTimerReachedZero)
+                    {
+                        TurnToGamePlaying();
+                        countDownTimerReachedZero = false;
+                    }
+                    else
+                    {
+                        countDownToStartTimer = 0;
+                        countDownTimerReachedZero = true;
+                    }
                 }
                 break;
             case State.GamePlaying:
                 gamePlayingTimer -= Time.deltaTime;
-                if(gamePlayingTimer <= 0)
+                if (gamePlayingTimer <= 0)
                 {
-                    TurnToGameOver();
+                    if (gamePlayingTimerReachedZero)
+                    {
+                        TurnToGameOver();
+                        gamePlayingTimerReachedZero = false;
+                    }
+                    else
+                    {
+                        gamePlayingTimer = 0;
+                        gamePlayingTimerReachedZero = true;
+                    }
                 }
                 break;
             case State.GameOver:
@@ -104,7 +124,7 @@ public class GameManager : MonoBehaviour
     private void TurnToGameOver()
     {
         state = State.GameOver;
-        EnablePlayer();
+        DisablePlayer();
         OnStateChanged?.Invoke(this, EventArgs.Empty);
     }
 

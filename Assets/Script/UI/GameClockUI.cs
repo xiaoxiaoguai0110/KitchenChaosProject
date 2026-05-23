@@ -29,7 +29,7 @@ public class GameClockUI : MonoBehaviour
         if (GameManager.Instance.IsGamePlayingState())
         {
             progressImage.fillAmount = GameManager.Instance.GetGamePlayingTimerNormalized();
-            timeText.text = Mathf.CeilToInt(GameManager.Instance.GetGamePlayingTimer()).ToString();
+            timeText.text = Mathf.CeilToInt(Mathf.Max(0, GameManager.Instance.GetGamePlayingTimer())).ToString();
         }
     }
 

@@ -21,7 +21,7 @@ public class CountDownUI : MonoBehaviour
     {
         if (GameManager.Instance.IsCountDownState())
         {
-            int nowNumber = Mathf.CeilToInt(GameManager.Instance.GetCountDownTimer());
+            int nowNumber = Mathf.CeilToInt(Mathf.Max(0, GameManager.Instance.GetCountDownTimer()));
             numberText.text = nowNumber.ToString();
             if (nowNumber != PreNumber) 
             {
