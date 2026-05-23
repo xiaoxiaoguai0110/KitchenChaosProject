@@ -15,16 +15,24 @@
 - 支持"原料追溯"——当订单需要加工后的成品（如 CookedMeat）时，自动反向查找配方链，追溯到对应的生原料（RawMeat）并完成加工流程
 - 使用 `list.Contains()` 做差集运算实现"订单需要的 - 台子上已有的 = 真正缺的"
 
-**行为状态机：**
-- 通过枚举 + 状态分支，实现了 Cutting（切菜循环）、Waiting（等待烹饪）、None（自由决策）三种行为模式
-- 到达目标柜台后根据柜台类型自动切换行为状态
-- 冷却系统防止多帧重复触发的交互冲突
+**显式状态机架构：**
+- 使用 `enum AIState` + `switch` 实现 4 个独立状态：Idle / MovingToTarget / Cutting / Waiting
+- 每个状态对应一个 `Update*()` 方法，逻辑完全隔离，互不干扰
+- 通过 `ChangeState()` 统一管理状态切换，状态流转清晰可追溯
+- 移除了旧版散落在 Update 中的 if-else 冷却判断，全部收归各状态内部管理
+
+**碰撞检测与主动避让：**
+- `IsTargetCounterBlocked()` — 每帧检查目标柜台是否被玩家占用
+- 通过 `CanAddKitchenObjectSO()` 预测交互是否成功，食材不合法/已存在时立即换目标
+- 从根本上解决了 AI 与玩家选同一柜台时卡死不动的死循环问题
 
 **技术挑战与解决方案：**
 - 首次交互后 0.8s 冷却导致 AI 频繁发呆 → 优化为 0.15s，连贯性大幅提升
 - `missingIngredients` 只包含成品食材，找不到对应的 ContainerCounter 导致死锁 → 新增配方反向查询
 - 订单生成前 AI 乱拿原料 → 改为事件驱动，监听到第一个订单后再行动
-- 代码膨胀（单文件 300+ 行）→ 重构拆分为 7 个语义化子方法
+- AI 与玩家选同一柜台后卡死不动 → 每帧检测柜台是否被占，提前换目标而非事后补救
+- 代码膨胀（单文件 500+ 行）→ 状态模式拆分 + 10 个语义化子方法 + 显式状态机管理
+- 游戏结束倒计时只到 1 不到 0 → 延迟一帧切状态 + UI 钳制 `Mathf.Max(0, timer)`
 
 ### 2. OOP 架构设计
 - **多态继承体系**：`BaseCounter` 作为抽象基类，7 个子类各自重写 `Interact()` 实现不同柜台行为
@@ -44,7 +52,7 @@
 - 解决了"一个人改了键位，两个人的按键都受影响"的 bug
 
 ### 5. 版本控制与工程实践
-- 语义化版本号（v1.1 ~ v1.5），每次更新有明确版本记录
+- 语义化版本号（v1.1 ~ v1.7），每次更新有明确版本记录
 - 每次 commit 聚焦单一变更，commit message 规范化
 - 从单文件逐步重构为清晰的方法分拆，保证可维护性
 - SSH 部署，自动化推送流程
@@ -61,6 +69,19 @@
 ---
 
 ## 版本记录
+
+### v1.7 - AI 碰撞检测 + 倒计时修复 + GameOver 逻辑修正
+- **`IsTargetCounterBlocked()`** — 每帧检测目标柜台是否被占，提前换目标
+- **`CanAddKitchenObjectSO()`** — 无副作用预测食材能否装盘
+- AI 启动时机：新增 `hasReceivedFirstOrder`，订单未加载前不行动
+- `TurnToGameOver()` 修正：`EnablePlayer()` → `DisablePlayer()`
+- 计时器归零延迟：保留一帧显示 0，UI 添加 `Mathf.Max` 钳制
+
+### v1.6 - AIPlayer 状态机重构
+- 显式状态机：`enum AIState` + `switch(data:Idle/MovingToTarget/Cutting/Waiting)`
+- 删除旧 `AIActionType`，用统一 `ChangeState()` 管理状态切换
+- `HandleActionAtCounter` 拆分为 `OnReachedTarget` + `UpdateCutting` + `UpdateWaiting`
+- 每个状态逻辑完全隔离，降低维护成本和 Bug 风险
 
 ### v1.5 - AI 原料追溯与死锁修复
 - 新增配方反向查询：AI 能自动将"成品需求"追溯为"原料需求"
@@ -92,7 +113,7 @@
 
 ```
 Assets/Script/
-├── AIPlayer.cs                 # AI 决策系统（10 个语义化方法）
+├── AIPlayer.cs                 # AI 决策系统（状态机 + 10 个语义化子方法 + 碰撞检测）
 ├── Player.cs                   # 玩家控制器
 ├── KitchenObjectHolder.cs      # 物品持有基类
 ├── KitchenObject.cs            # 物品基类
