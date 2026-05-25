@@ -97,7 +97,7 @@ public class OrderManager : MonoBehaviour
 
     }
 
-    private bool IsCorrect(RecipeSO recipe,PlateKitchenObject plateKitchenObject)
+    private bool IsCorrect(RecipeSO recipe, PlateKitchenObject plateKitchenObject)
     {
         List<KitchenObjectSO> list1 = recipe.kitchenObjectSOList;
         List<KitchenObjectSO> list2 = plateKitchenObject.GetKitchenObjectSOList();

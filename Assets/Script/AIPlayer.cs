@@ -464,10 +464,43 @@ public class AIPlayer : MonoBehaviour
         }
         else
         {
-            foreach (BaseCounter counter in allCounters)
+            RecipeSO targetOrder = null;
+            foreach (RecipeSO order in OrderManager.Instance.GetOrderList())
             {
-                if (counter is ClearCounter clearCounter && clearCounter.IsHaveKitchenObject())
-                    availableCounters.Add(counter);
+                bool canMatch = true;
+                foreach (KitchenObjectSO plateIngredient in plate.GetKitchenObjectSOList())
+                {
+                    if (!order.kitchenObjectSOList.Contains(plateIngredient))
+                    {
+                        canMatch = false;
+                        break;
+                    }
+                }
+                if (canMatch)
+                {
+                    targetOrder = order;
+                    break;
+                }
+            }
+
+            if (targetOrder != null)
+            {
+                List<KitchenObjectSO> neededIngredients = new List<KitchenObjectSO>();
+                foreach (KitchenObjectSO ingredient in targetOrder.kitchenObjectSOList)
+                {
+                    if (!plate.GetKitchenObjectSOList().Contains(ingredient))
+                        neededIngredients.Add(ingredient);
+                }
+
+                foreach (BaseCounter counter in allCounters)
+                {
+                    if (counter is ClearCounter clearCounter && clearCounter.IsHaveKitchenObject())
+                    {
+                        KitchenObjectSO counterSO = clearCounter.GetKitchenObject().GetKitchenObjectSO();
+                        if (neededIngredients.Contains(counterSO))
+                            availableCounters.Add(counter);
+                    }
+                }
             }
 
             if (availableCounters.Count == 0)
