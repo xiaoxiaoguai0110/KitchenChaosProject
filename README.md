@@ -1,5 +1,7 @@
 # KitchenChaos - 本地双人合作厨房模拟游戏
 
+[![Build Status](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml/badge.svg)](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml)
+
 基于 Unity 开发的本地双人合作厨房模拟游戏，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
 
 ---
@@ -158,4 +160,5 @@ Assets/Script/
 | Unity New Input System | Player 1 输入 |
 | Direct Input Polling | Player 2 输入 |
 | SSH / Git | 版本控制 |
+| GitHub Actions | CI/CD 持续集成 |
 | C# Events | 模块通信 |
