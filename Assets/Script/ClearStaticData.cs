@@ -7,8 +7,8 @@ public class ClearStaticData : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        TrashCounter.ClearStaticData();
+        TrashCounter.ClearTrashedEventSubscribers();
         KitchenObjectHolder.ClearStaticData();
-        CuttingCounter.ClearStaticData();
+        CuttingCounter.ClearCutEventSubscribers();
     }
 }
