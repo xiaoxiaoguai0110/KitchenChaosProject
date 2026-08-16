@@ -8,7 +8,7 @@
 
 ## 项目亮点
 
-### 1. AI 队友系统（核心复杂度）
+### 1. AI 队友系统（核心玩法）
 单人模式下 Player 2 由 AI 控制，实现了完整的"观察-决策-执行"循环：
 
 **目标选择系统：**
@@ -18,14 +18,22 @@
 - 使用 `list.Contains()` 做差集运算实现"订单需要的 - 台子上已有的 = 真正缺的"
 - **按订单锁定装盘**——盘子里已有食材是某个订单的子集时才继续装该订单的食材，杜绝混装
 
-**显式状态机架构：**
-- 使用 `enum AIState` + `switch` 实现 4 个独立状态：Idle / MovingToTarget / Cutting / Waiting
-- 每个状态对应一个 `Update*()` 方法，逻辑完全隔离，互不干扰
-- 通过 `ChangeState()` 统一管理状态切换，状态流转清晰可追溯
-- 移除了旧版散落在 Update 中的 if-else 冷却判断，全部收归各状态内部管理
+**模块化 AI 架构：**
+
+| 模块 | 职责 |
+|------|------|
+| `AIPlayer` | Unity 生命周期、Idle / Moving / Acting 三态调度 |
+| `AIPlayerTargetSelector` | 根据持有物、订单和柜台状态选择目标 |
+| `AIOrderPlanner` | 计算缺失食材、反查原料、匹配可继续完成的订单 |
+| `AIPlayerActionController` | 执行普通交互、切菜节奏和炉灶等待 |
+| `AIPlayerMovement` | 移动、转向及行走动画状态 |
+
+- `AIPlayer` 从 500+ 行缩减为轻量入口，不再同时承担所有决策和动作细节
+- 目标选择、订单推理、移动和加工均可独立修改，降低新增菜谱或行为时的影响范围
+- 场景仍只需挂载原有 `AIPlayer` 组件，已有 ScriptableObject 配方引用无需迁移
 
 **碰撞检测与主动避让：**
-- `IsTargetCounterBlocked()` — 每帧检查目标柜台是否被玩家占用
+- `AIPlayerTargetSelector.IsBlocked()` — 每帧检查目标柜台是否被玩家占用
 - 通过 `CanAddKitchenObjectSO()` 预测交互是否成功，食材不合法/已存在时立即换目标
 - 从根本上解决了 AI 与玩家选同一柜台时卡死不动的死循环问题
 
@@ -34,7 +42,7 @@
 - `missingIngredients` 只包含成品食材，找不到对应的 ContainerCounter 导致死锁 → 新增配方反向查询
 - 订单生成前 AI 乱拿原料 → 改为事件驱动，监听到第一个订单后再行动
 - AI 与玩家选同一柜台后卡死不动 → 每帧检测柜台是否被占，提前换目标而非事后补救
-- 代码膨胀（单文件 500+ 行）→ 状态模式拆分 + 10 个语义化子方法 + 显式状态机管理
+- 代码膨胀（单文件 500+ 行）→ 按状态调度、目标决策、订单规划、动作和移动拆分为 5 个模块
 - 游戏结束倒计时只到 1 不到 0 → 延迟一帧切状态 + UI 钳制 `Mathf.Max(0, timer)`
 - AI 把不同订单的食材混装到一盘 → 按订单锁定装盘，盘子里食材必须是某个订单的子集才继续装
 
@@ -72,7 +80,33 @@
 
 ---
 
+## 运行项目
+
+### 环境要求
+
+- Unity `2022.3.62f1c1`（建议使用相同版本，避免资源重新序列化）
+- Windows、macOS 或 Linux 上可运行 Unity Editor 的环境
+- 双人游玩需要一套键盘；键位可在游戏设置中查看和调整
+
+### 启动步骤
+
+1. 克隆仓库：`git clone git@github.com:xiaoxiaoguai0110/KitchenChaosProject.git`
+2. 在 Unity Hub 中选择 **Add project from disk**，打开仓库根目录
+3. 等待 Unity 完成资源导入和脚本编译
+4. 打开 `Assets/Scenes/0-GameMenu.unity`，点击 Play 开始运行
+
+> 如果使用不同的 Unity 小版本，首次导入时间可能较长。请不要提交自动生成的 `Library/`、`Temp/`、`Logs/` 或 `obj/` 目录。
+
+---
+
 ## 版本记录
+
+### v1.9 - AI 玩家模块化重构
+- 将单文件 AI 拆分为状态调度、目标选择、订单规划、动作控制和移动控制 5 个职责模块
+- `AIPlayer` 仅保留 Unity 生命周期和 Idle / Moving / Acting 状态流转
+- 保持原有 Inspector 配方字段及场景组件兼容，无需重新绑定预制体
+- 补充事件解绑和配方列表空引用保护
+- 通过 Unity 2022.3 批处理编译验证
 
 ### v1.8 - AI 智能装盘：按订单锁定，避免混装
 - **按订单锁定装盘**：盘子里已有食材必须是某个订单的子集才继续装该订单
@@ -123,7 +157,12 @@
 
 ```
 Assets/Script/
-├── AIPlayer.cs                 # AI 决策系统（状态机 + 10 个语义化子方法 + 碰撞检测）
+├── AIPlayer.cs                 # AI 生命周期与三态调度入口
+├── AI/
+│   ├── AIPlayerTargetSelector.cs    # 目标柜台选择与占用检测
+│   ├── AIOrderPlanner.cs             # 订单匹配与原料规划
+│   ├── AIPlayerActionController.cs   # 交互、切菜和炉灶等待
+│   └── AIPlayerMovement.cs           # 移动、转向与动画状态
 ├── Player.cs                   # 玩家控制器
 ├── KitchenObjectHolder.cs      # 物品持有基类
 ├── KitchenObject.cs            # 物品基类

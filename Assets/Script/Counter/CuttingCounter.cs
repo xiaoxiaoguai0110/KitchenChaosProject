@@ -63,7 +63,7 @@ public class CuttingCounter : BaseCounter
         cuttingCount++;
         cuttingCounterVisiual.PlayCut();
     }
-    public static void ClearStaticData()
+    public static void ClearCutEventSubscribers()
     {
         OnCut = null;
     }

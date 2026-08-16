@@ -15,7 +15,7 @@ public class TrashCounter : BaseCounter
         }
     }
 
-    public static void ClearStaticData()
+    public static void ClearTrashedEventSubscribers()
     {
         OnObjectTrashed = null;
     }
