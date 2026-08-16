@@ -33,12 +33,15 @@ public class GameManager : MonoBehaviour
     private bool isGamePause = false;
     private bool countDownTimerReachedZero;
     private bool gamePlayingTimerReachedZero;
+    private AIPlayer aiPlayer;
 
     // Start is called before the first frame update
     private void Awake()
     {
         Instance = this;
         gamePlayingTimeTotal = gamePlayingTimer;
+        aiPlayer = player2 != null ? player2.GetComponent<AIPlayer>() : null;
+        ConfigureGameMode();
     }
     private void Start()
     {
@@ -140,7 +143,18 @@ public class GameManager : MonoBehaviour
         if (player1 != null)
             player1.enabled = true;
         if (player2 != null)
-            player2.enabled = true;
+            player2.enabled = GameModeSelection.Current == GameMode.LocalMultiplayer;
+    }
+
+    private void ConfigureGameMode()
+    {
+        bool usesSecondPlayer = GameModeSelection.Current != GameMode.SinglePlayer;
+
+        if (player2 != null)
+            player2.gameObject.SetActive(usesSecondPlayer);
+
+        if (aiPlayer != null)
+            aiPlayer.enabled = GameModeSelection.Current == GameMode.SinglePlayerWithAI;
     }
     public bool IsWaitingToStartState()
     {

@@ -151,13 +151,13 @@ public class AIPlayer : MonoBehaviour
 
     private void IgnoreHumanPlayerCollision()
     {
-        CapsuleCollider aiCollider = GetComponent<CapsuleCollider>();
+        CharacterController aiController = GetComponent<CharacterController>();
         Player humanPlayer = Player.GetInstance(0);
-        CapsuleCollider humanCollider = humanPlayer != null
-            ? humanPlayer.GetComponent<CapsuleCollider>()
+        CharacterController humanController = humanPlayer != null
+            ? humanPlayer.GetComponent<CharacterController>()
             : null;
 
-        if (aiCollider != null && humanCollider != null)
-            Physics.IgnoreCollision(aiCollider, humanCollider);
+        if (aiController != null && humanController != null)
+            Physics.IgnoreCollision(aiController, humanController);
     }
 }

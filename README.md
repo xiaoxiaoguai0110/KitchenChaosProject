@@ -1,8 +1,10 @@
-# KitchenChaos - 本地双人合作厨房模拟游戏
+# KitchenChaos - 单人 / AI 协作 / 本地双人厨房模拟游戏
 
 [![Build Status](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml/badge.svg)](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml)
 
-基于 Unity 开发的本地双人合作厨房模拟游戏，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
+基于 Unity 开发的厨房模拟游戏，支持单人挑战、AI 队友协作和本地双人合作，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
+
+项目后续打磨计划与任务状态见 [ROADMAP.md](ROADMAP.md)。
 
 ---
 
@@ -31,6 +33,7 @@
 - `AIPlayer` 从 500+ 行缩减为轻量入口，不再同时承担所有决策和动作细节
 - 目标选择、订单推理、移动和加工均可独立修改，降低新增菜谱或行为时的影响范围
 - 场景仍只需挂载原有 `AIPlayer` 组件，已有 ScriptableObject 配方引用无需迁移
+- 真人与 AI 共用 `CharacterController.Move()`，由 Unity 统一处理柜台和场景碰撞
 
 **碰撞检测与主动避让：**
 - `AIPlayerTargetSelector.IsBlocked()` — 每帧检查目标柜台是否被玩家占用
@@ -63,8 +66,15 @@
 - Player 2 直接键盘轮询读取（`Input.GetKeyDown`），不受输入系统存档影响
 - 解决了"一个人改了键位，两个人的按键都受影响"的 bug
 
-### 5. 版本控制与工程实践
-- 语义化版本号（v1.1 ~ v1.8），每次更新有明确版本记录
+### 5. 模式选择与菜单系统
+- 主菜单提供“单人模式”和“本地双人”入口；单人模式可继续选择独自挑战或启用 AI 厨师
+- `GameModeSelection` 在场景切换时保存当前模式，`GameManager` 根据模式分配 Player 2 / AI 控制权
+- 菜单采用 1920×1080 参考分辨率和 `Scale With Screen Size`，兼容不同窗口尺寸
+- 设置面板支持全屏/窗口切换，按钮提供鼠标与键盘选中反馈
+- ICE TextMeshPro 字体使用动态多图集，新增中文文案不再显示缺字方框
+
+### 6. 版本控制与工程实践
+- 语义化版本号（v1.1 ~ v1.11），每次更新有明确版本记录
 - 每次 commit 聚焦单一变更，commit message 规范化
 - 从单文件逐步重构为清晰的方法分拆，保证可维护性
 - SSH 部署，自动化推送流程
@@ -72,6 +82,16 @@
 ---
 
 ## 游戏玩法
+
+### 游戏模式
+
+- **单人挑战**：只启用 Player 1，不生成第二名角色控制逻辑
+- **单人 + AI**：Player 1 由玩家控制，Player 2 交给 AI 队友
+- **本地双人**：禁用 AI，由两名玩家共同操作 Player 1 和 Player 2
+
+模式从 `Assets/Scenes/0-GameMenu.unity` 选择，进入游戏场景后由 `GameManager` 自动配置控制权。
+
+### 核心循环
 
 1. **拿食材** → ContainerCounter 获取原料
 2. **加工处理** → CuttingCounter 切菜 / StoveCounter 烹饪
@@ -100,6 +120,20 @@
 ---
 
 ## 版本记录
+
+### v1.11 - 主菜单与游戏模式
+- 重做主菜单视觉层级，新增悬停/选中反馈与响应式 Canvas 缩放
+- 新增单人挑战、单人 + AI、本地双人三种游玩方式
+- `GameManager` 按模式启用 Player 2 或 AI，避免真人输入与 AI 抢占同一角色
+- 新增基础显示设置面板，支持全屏与窗口模式切换
+- ICE SDF 改为动态多图集，修复新增中文文案显示方框的问题
+- 新增 `ROADMAP.md`，记录后续打磨优先级和验收标准
+
+### v1.10 - CharacterController 移动重构
+- 玩家和 AI 从“动态 Rigidbody + 直接修改 Transform”迁移到 `CharacterController.Move()`
+- 移除角色对象上的 Rigidbody 与独立 CapsuleCollider，避免物理系统和 Transform 同时控制位置
+- 真人和 AI 复用 `Player.Move()` 移动入口，统一碰撞行为
+- 玩家移动从 `FixedUpdate()` 调整到 `Update()`，与 CharacterController 的逐帧移动方式一致
 
 ### v1.9 - AI 玩家模块化重构
 - 将单文件 AI 拆分为状态调度、目标选择、订单规划、动作控制和移动控制 5 个职责模块
@@ -169,6 +203,7 @@ Assets/Script/
 ├── PlateKitchenObject.cs       # 盘子（物品容器）
 ├── Manager/
 │   ├── GameManager.cs          # 全局状态机
+│   ├── GameModeSelection.cs    # 菜单模式选择与场景间状态
 │   ├── OrderManager.cs         # 订单系统
 │   ├── SoundManager.cs         # 音效管理
 │   └── MusicManager.cs         # 音乐管理
@@ -183,6 +218,8 @@ Assets/Script/
 │   └── TrashCounter.cs         # 垃圾桶
 ├── ScriptObjects/              # 数据配置（ScriptableObject）
 └── UI/
+    ├── GameMenuUI.cs           # 主菜单、模式选择和显示设置
+    ├── MenuButtonVisual.cs     # 菜单按钮悬停与选中动画
     ├── OrderListUI.cs          # 订单列表 UI
     └── RecipeUI.cs             # 订单模板 UI
 ```
@@ -198,6 +235,7 @@ Assets/Script/
 | ScriptableObject | 数据驱动架构 |
 | Unity New Input System | Player 1 输入 |
 | Direct Input Polling | Player 2 输入 |
+| CharacterController | 玩家与 AI 的移动碰撞 |
 | SSH / Git | 版本控制 |
 | GitHub Actions | CI/CD 持续集成 |
 | C# Events | 模块通信 |

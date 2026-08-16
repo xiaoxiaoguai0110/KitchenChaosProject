@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class Player : KitchenObjectHolder
 {
     private const int MaxPlayers = 2;
@@ -18,6 +19,7 @@ public class Player : KitchenObjectHolder
     private bool isWalking = false;
     private BaseCounter selectedCounter;
     private GameInput subscribedInput;
+    private CharacterController characterController;
 
     private GameInput ResolvedInput => gameInput != null ? gameInput : GameInput.Instance;
 
@@ -42,6 +44,8 @@ public class Player : KitchenObjectHolder
 
     private void Awake()
     {
+        characterController = GetComponent<CharacterController>();
+
         if (playerIndex < 0 || playerIndex >= MaxPlayers)
         {
             Debug.LogError($"Player: playerIndex {playerIndex} ????????? 0??{MaxPlayers - 1}??");
@@ -79,11 +83,8 @@ public class Player : KitchenObjectHolder
 
     private void Update()
     {
-        HandleInteraction();
-    }
-    private void FixedUpdate()
-    {
         HandleMovement();
+        HandleInteraction();
     }
     public bool IsWalking
     {
@@ -97,6 +98,12 @@ public class Player : KitchenObjectHolder
     {
         isWalking = value;
     }
+
+    public void Move(Vector3 motion)
+    {
+        characterController.Move(motion);
+    }
+
     private void HandleMovement()
     {
         GameInput input = ResolvedInput;
@@ -104,7 +111,7 @@ public class Player : KitchenObjectHolder
             return;
         Vector3 direction = input.GetMovementDirectionNormalized(playerIndex);
         isWalking = direction != Vector3.zero;
-        transform.position += direction * moveSpeed * Time.deltaTime;
+        Move(direction * moveSpeed * Time.deltaTime);
         if (direction != Vector3.zero)
         {
             transform.forward = Vector3.Slerp(transform.forward, direction, Time.deltaTime * (rotateSpeed));

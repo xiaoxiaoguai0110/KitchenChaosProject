@@ -6605,12 +6605,11 @@ GameObject:
   m_Component:
   - component: {fileID: 1006869959}
   - component: {fileID: 1006869958}
-  - component: {fileID: 1006869957}
-  - component: {fileID: 1006869956}
   - component: {fileID: 1006869955}
   - component: {fileID: 1006869960}
+  - component: {fileID: 1006869961}
   m_Layer: 0
-  m_Name: Player (1)
+  m_Name: AIPlayer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6628,56 +6627,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fac3c3f924716814eb00a05771fd946e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
---- !u!54 &1006869956
-Rigidbody:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1006869954}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 84
-  m_CollisionDetection: 0
---- !u!136 &1006869957
-CapsuleCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1006869954}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.65
-  m_Height: 2
-  m_Direction: 1
-  m_Center: {x: 0, y: 1, z: 0}
 --- !u!114 &1006869958
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6729,6 +6678,32 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   cuttingRecipeList: {fileID: 11400000, guid: 8d9fb1244a1689d4f8bb65e563c58b91, type: 2}
   fryingRecipeList: {fileID: 11400000, guid: aeb454531f26f6a4fabe0340d3327014, type: 2}
+--- !u!143 &1006869961
+CharacterController:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1006869954}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Height: 2
+  m_Radius: 0.65
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0
+  m_Center: {x: 0, y: 1, z: 0}
 --- !u!4 &1030799228 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 1562545316051293255, guid: 9935d3d7771c5ae4a8aa495f58c5c225,
@@ -12933,9 +12908,8 @@ GameObject:
   m_Component:
   - component: {fileID: 2054136160}
   - component: {fileID: 2054136159}
-  - component: {fileID: 2054136162}
-  - component: {fileID: 2054136161}
   - component: {fileID: 2054136163}
+  - component: {fileID: 2054136164}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -12980,35 +12954,20 @@ Transform:
   - {fileID: 658670345}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!54 &2054136161
-Rigidbody:
+--- !u!114 &2054136163
+MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2054136158}
-  serializedVersion: 4
-  m_Mass: 1
-  m_Drag: 0
-  m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
-  m_InertiaTensor: {x: 1, y: 1, z: 1}
-  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ImplicitCom: 1
-  m_ImplicitTensor: 1
-  m_UseGravity: 1
-  m_IsKinematic: 0
-  m_Interpolate: 0
-  m_Constraints: 84
-  m_CollisionDetection: 0
---- !u!136 &2054136162
-CapsuleCollider:
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fac3c3f924716814eb00a05771fd946e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!143 &2054136164
+CharacterController:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
@@ -13025,23 +12984,14 @@ CapsuleCollider:
   m_IsTrigger: 0
   m_ProvidesContacts: 0
   m_Enabled: 1
-  serializedVersion: 2
-  m_Radius: 0.65
+  serializedVersion: 3
   m_Height: 2
-  m_Direction: 1
+  m_Radius: 0.65
+  m_SlopeLimit: 45
+  m_StepOffset: 0.3
+  m_SkinWidth: 0.08
+  m_MinMoveDistance: 0
   m_Center: {x: 0, y: 1, z: 0}
---- !u!114 &2054136163
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2054136158}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: fac3c3f924716814eb00a05771fd946e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &2056800484
 GameObject:
   m_ObjectHideFlags: 0

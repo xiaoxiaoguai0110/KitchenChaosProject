@@ -24,7 +24,7 @@ internal sealed class AIPlayerMovement
             return true;
 
         Vector3 moveDirection = direction.normalized;
-        transform.position += moveDirection * MoveSpeed * deltaTime;
+        player.Move(moveDirection * MoveSpeed * deltaTime);
         transform.forward = Vector3.RotateTowards(
             transform.forward,
             moveDirection,
