@@ -12,11 +12,40 @@ public class CountDownUI : MonoBehaviour
 
     private int previousNumber = -1;
     private Animator animator;
+    private GameManager subscribedGameManager;
 
     private void Start()
     {
         animator = GetComponent<Animator>();
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
     }
 
     private void Update()
@@ -64,9 +93,4 @@ public class CountDownUI : MonoBehaviour
         };
     }
 
-    private void OnDestroy()
-    {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnStateChanged -= GameManager_OnStateChanged;
-    }
 }

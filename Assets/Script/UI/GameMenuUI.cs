@@ -23,7 +23,7 @@ public class GameMenuUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI fullscreenButtonText;
     [SerializeField] private Button closeSettingsButton;
 
-    private void Start()
+    private void OnEnable()
     {
         singlePlayerButton.onClick.AddListener(ShowSinglePlayerOptions);
         localMultiplayerButton.onClick.AddListener(StartLocalMultiplayer);
@@ -34,14 +34,17 @@ public class GameMenuUI : MonoBehaviour
         closeSinglePlayerButton.onClick.AddListener(HideSinglePlayerOptions);
         fullscreenButton.onClick.AddListener(ToggleFullscreen);
         closeSettingsButton.onClick.AddListener(HideSettings);
+    }
 
+    private void Start()
+    {
         singlePlayerPanel.SetActive(false);
         settingsPanel.SetActive(false);
         UpdateFullscreenLabel();
         EventSystem.current?.SetSelectedGameObject(singlePlayerButton.gameObject);
     }
 
-    private void OnDestroy()
+    private void OnDisable()
     {
         singlePlayerButton.onClick.RemoveListener(ShowSinglePlayerOptions);
         localMultiplayerButton.onClick.RemoveListener(StartLocalMultiplayer);

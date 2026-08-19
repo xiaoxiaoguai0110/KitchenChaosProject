@@ -9,13 +9,44 @@ public class GameOverUI : MonoBehaviour
     [SerializeField] private Button restartButton;
     [SerializeField] private Button menuButton;
     [SerializeField] private UIPopupAnimator popupAnimator;
+    private GameManager subscribedGameManager;
 
     private void Start()
     {
         Hide();
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
         restartButton?.onClick.AddListener(RestartGame);
         menuButton?.onClick.AddListener(ReturnToMenu);
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+        restartButton?.onClick.RemoveListener(RestartGame);
+        menuButton?.onClick.RemoveListener(ReturnToMenu);
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
     }
 
     private void GameManager_OnStateChanged(object sender, System.EventArgs e)
@@ -49,12 +80,4 @@ public class GameOverUI : MonoBehaviour
         Loader.Load(Loader.Scene.GameMenuScene);
     }
 
-    private void OnDestroy()
-    {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnStateChanged -= GameManager_OnStateChanged;
-
-        restartButton?.onClick.RemoveListener(RestartGame);
-        menuButton?.onClick.RemoveListener(ReturnToMenu);
-    }
 }

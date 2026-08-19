@@ -6,6 +6,12 @@ using UnityEngine;
 public class TrashCounter : BaseCounter
 {
     public static event EventHandler OnObjectTrashed;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticEvent()
+    {
+        OnObjectTrashed = null;
+    }
     public override void Interact(Player player)
     {
         if (player.IsHaveKitchenObject())
@@ -15,8 +21,4 @@ public class TrashCounter : BaseCounter
         }
     }
 
-    public static void ClearTrashedEventSubscribers()
-    {
-        OnObjectTrashed = null;
-    }
 }

@@ -8,6 +8,13 @@ public class CuttingCounter : BaseCounter
 {
     public static event EventHandler OnCut;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticEvent()
+    {
+        // 静态事件的生命周期不属于任何场景对象，因此在每次运行前主动清空。
+        OnCut = null;
+    }
+
     [SerializeField]private CuttingRecipeListSO cuttingRecipeList;
     [SerializeField]private ProgressBarUI progressBarUI;
     [SerializeField]private CuttingCounterVisual cuttingCounterVisiual;
@@ -63,9 +70,4 @@ public class CuttingCounter : BaseCounter
         cuttingCount++;
         cuttingCounterVisiual.PlayCut();
     }
-    public static void ClearCutEventSubscribers()
-    {
-        OnCut = null;
-    }
-
 }

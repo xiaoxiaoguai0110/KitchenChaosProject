@@ -13,11 +13,40 @@ public class TutorialUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI interactKeyText;
     [SerializeField] private TextMeshProUGUI operateKeyText;
     [SerializeField] private TextMeshProUGUI pauseKeyText;
+    private GameManager subscribedGameManager;
 
     private void Start()
     {
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
         Show();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
     }
 
     private void GameManager_OnStateChanged(object sender, System.EventArgs e)

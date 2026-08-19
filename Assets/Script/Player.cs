@@ -30,16 +30,21 @@ public class Player : KitchenObjectHolder
         return s_Instances[index];
     }
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        // 支持关闭 Domain Reload 的快速进入 Play Mode：旧场景角色不能残留在静态数组中。
+        for (int i = 0; i < s_Instances.Length; i++)
+            s_Instances[i] = null;
+    }
+
     void Start()
     {
-        subscribedInput = ResolvedInput;
+        SubscribeToInput();
         if (subscribedInput == null)
         {
             Debug.LogError("Player: ???? Inspector ??? GameInput??????????????? GameInput ?????");
-            return;
         }
-        subscribedInput.OnInteractAction += GameInput_OnInteractAction;
-        subscribedInput.OnOperateAction += GameInput_OnOperateAction;
     }
 
     private void Awake()
@@ -56,15 +61,43 @@ public class Player : KitchenObjectHolder
         s_Instances[playerIndex] = this;
     }
 
+    private void OnEnable()
+    {
+        SubscribeToInput();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromInput();
+    }
+
     private void OnDestroy()
     {
-        if (subscribedInput != null)
-        {
-            subscribedInput.OnInteractAction -= GameInput_OnInteractAction;
-            subscribedInput.OnOperateAction -= GameInput_OnOperateAction;
-        }
         if (playerIndex >= 0 && playerIndex < MaxPlayers && s_Instances[playerIndex] == this)
             s_Instances[playerIndex] = null;
+    }
+
+    private void SubscribeToInput()
+    {
+        if (subscribedInput != null)
+            return;
+
+        subscribedInput = ResolvedInput;
+        if (subscribedInput == null)
+            return;
+
+        subscribedInput.OnInteractAction += GameInput_OnInteractAction;
+        subscribedInput.OnOperateAction += GameInput_OnOperateAction;
+    }
+
+    private void UnsubscribeFromInput()
+    {
+        if (subscribedInput == null)
+            return;
+
+        subscribedInput.OnInteractAction -= GameInput_OnInteractAction;
+        subscribedInput.OnOperateAction -= GameInput_OnOperateAction;
+        subscribedInput = null;
     }
 
     private void GameInput_OnOperateAction(object sender, GameInput.PlayerActionEventArgs e)

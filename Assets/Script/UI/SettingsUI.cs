@@ -38,6 +38,12 @@ public class SettingsUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI operateKeyButtonText;
     [SerializeField] private TextMeshProUGUI pauseKeyButtonText;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
+
     private void Awake()
     {
         Instance = this;
@@ -48,7 +54,10 @@ public class SettingsUI : MonoBehaviour
         Hide();
         rebindingHint.SetActive(false);
         UpdateVisual();
+    }
 
+    private void OnEnable()
+    {
         soundButton.onClick.AddListener(ChangeSoundVolume);
         musicButton.onClick.AddListener(ChangeMusicVolume);
         closeButton.onClick.AddListener(Hide);
@@ -60,6 +69,21 @@ public class SettingsUI : MonoBehaviour
         interactKeyButton.onClick.AddListener(RebindInteract);
         operateKeyButton.onClick.AddListener(RebindOperate);
         pauseKeyButton.onClick.AddListener(RebindPause);
+    }
+
+    private void OnDisable()
+    {
+        soundButton.onClick.RemoveListener(ChangeSoundVolume);
+        musicButton.onClick.RemoveListener(ChangeMusicVolume);
+        closeButton.onClick.RemoveListener(Hide);
+
+        upKeyButton.onClick.RemoveListener(RebindUp);
+        downKeyButton.onClick.RemoveListener(RebindDown);
+        leftKeyButton.onClick.RemoveListener(RebindLeft);
+        rightKeyButton.onClick.RemoveListener(RebindRight);
+        interactKeyButton.onClick.RemoveListener(RebindInteract);
+        operateKeyButton.onClick.RemoveListener(RebindOperate);
+        pauseKeyButton.onClick.RemoveListener(RebindPause);
     }
 
     public void Show()
@@ -125,18 +149,6 @@ public class SettingsUI : MonoBehaviour
 
     private void OnDestroy()
     {
-        soundButton.onClick.RemoveListener(ChangeSoundVolume);
-        musicButton.onClick.RemoveListener(ChangeMusicVolume);
-        closeButton.onClick.RemoveListener(Hide);
-
-        upKeyButton.onClick.RemoveListener(RebindUp);
-        downKeyButton.onClick.RemoveListener(RebindDown);
-        leftKeyButton.onClick.RemoveListener(RebindLeft);
-        rightKeyButton.onClick.RemoveListener(RebindRight);
-        interactKeyButton.onClick.RemoveListener(RebindInteract);
-        operateKeyButton.onClick.RemoveListener(RebindOperate);
-        pauseKeyButton.onClick.RemoveListener(RebindPause);
-
         if (Instance == this)
             Instance = null;
     }

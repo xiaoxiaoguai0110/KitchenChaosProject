@@ -28,12 +28,14 @@
 | `AIPlayerTargetSelector` | 根据持有物、订单和柜台状态选择目标 |
 | `AIOrderPlanner` | 计算缺失食材、反查原料、匹配可继续完成的订单 |
 | `AIPlayerActionController` | 执行普通交互、切菜节奏和炉灶等待 |
-| `AIPlayerMovement` | 移动、转向及行走动画状态 |
+| `AIPlayerMovement` | NavMesh 路径规划、脱困重规划、目标超时、转向及行走动画状态 |
 
 - `AIPlayer` 从 500+ 行缩减为轻量入口，不再同时承担所有决策和动作细节
 - 目标选择、订单推理、移动和加工均可独立修改，降低新增菜谱或行为时的影响范围
 - 场景仍只需挂载原有 `AIPlayer` 组件，已有 ScriptableObject 配方引用无需迁移
 - 真人与 AI 共用 `CharacterController.Move()`，由 Unity 统一处理柜台和场景碰撞
+- NavMeshAgent 只负责路径规划和局部避障，不直接修改角色 Transform
+- 连续无有效位移时自动更换站位并重新规划；目标长期不可达时会放弃并重新选择
 
 **碰撞检测与主动避让：**
 - `AIPlayerTargetSelector.IsBlocked()` — 每帧检查目标柜台是否被玩家占用
@@ -60,6 +62,8 @@
   - `CuttingCounter.OnCut` → SoundManager 播放音效
   - `KitchenObjectHolder.OnDrop / OnPickup` → 全局物品拾取/放下音效
 - 避免直接依赖，新增 AI 等模块时不需要修改已有代码
+- 静态事件在 `SubsystemRegistration` 阶段自动重置，支持关闭 Domain Reload 的快速 Play Mode
+- 普通事件使用 `OnEnable` / `OnDisable` 对称订阅和解绑，避免重进场景后重复音效或重复 UI 回调
 
 ### 4. 双人输入系统
 - Player 1 使用 Unity New Input System（支持自定义键位）
@@ -120,6 +124,16 @@
 ---
 
 ## 版本记录
+
+### v1.13 - AI NavMesh 寻路、脱困与事件生命周期
+- AI 改用 NavMesh 计算完整路径，CharacterController 仍作为唯一实际位移入口
+- 围绕柜台采样多个可交互站位并选择较短完整路径，不再沿直线穿越厨房布局
+- 连续 `2s` 无有效位移时重新规划，最多重试 `2` 次；单目标到达时间超过 `12s` 时自动放弃
+- 玩家移动时参与局部避障，停止后使用 NavMesh Carving；玩家占用的柜台会被 AI 短暂排除
+- AI Agent 半径与 KitchenAgent 烘焙半径统一为 `0.65`，移动速度统一为 `5`
+- 静态事件改用 `RuntimeInitializeOnLoadMethod(SubsystemRegistration)` 自动重置
+- GameInput、Player、AI、Manager、UI 和按钮监听统一使用 `OnEnable` / `OnDisable` 管理
+- 新增事件生命周期 EditMode 测试；AI 冒烟测试与 Unity 脚本编译均通过
 
 ### v1.12 - 游戏内 UI 重做与 NavMesh 基础配置
 - 订单列表、倒计时、游戏时钟、暂停、设置和结算界面统一为主菜单的深棕、橙色、奶油白与青绿色视觉风格

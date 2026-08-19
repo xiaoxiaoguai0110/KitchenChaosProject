@@ -34,6 +34,13 @@ public class GameManager : MonoBehaviour
     private bool countDownTimerReachedZero;
     private bool gamePlayingTimerReachedZero;
     private AIPlayer aiPlayer;
+    private GameInput subscribedInput;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
 
     // Start is called before the first frame update
     private void Awake()
@@ -46,7 +53,41 @@ public class GameManager : MonoBehaviour
     private void Start()
     {
         TurnToWaitingToStart();
-        GameInput.Instance.OnPauseAction += GameInput_OnPauseAction;
+        SubscribeToInput();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToInput();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromInput();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    private void SubscribeToInput()
+    {
+        if (subscribedInput != null || GameInput.Instance == null)
+            return;
+
+        subscribedInput = GameInput.Instance;
+        subscribedInput.OnPauseAction += GameInput_OnPauseAction;
+    }
+
+    private void UnsubscribeFromInput()
+    {
+        if (subscribedInput == null)
+            return;
+
+        subscribedInput.OnPauseAction -= GameInput_OnPauseAction;
+        subscribedInput = null;
     }
 
     private void GameInput_OnPauseAction(object sender, EventArgs e)

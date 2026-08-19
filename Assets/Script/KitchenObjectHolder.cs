@@ -8,6 +8,14 @@ public class KitchenObjectHolder : MonoBehaviour
     public static event EventHandler OnDrop;
     public static event EventHandler OnPickup;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticEvents()
+    {
+        // 进入新的 Play Session 时由 Unity 自动调用，即使关闭 Domain Reload 也不会保留旧订阅者。
+        OnDrop = null;
+        OnPickup = null;
+    }
+
     [SerializeField] private Transform holdPoint;
     private KitchenObject kitchenObject;
 
@@ -80,10 +88,5 @@ public class KitchenObjectHolder : MonoBehaviour
     {
         KitchenObject kitchenObject = GameObject.Instantiate(kitchenObjectPrefab, GetHoldPoint()).GetComponent<KitchenObject>();
         SetKitchenObject(kitchenObject);
-    }
-    public static void ClearStaticData()
-    {
-        OnDrop = null;
-        OnPickup = null;
     }
 }

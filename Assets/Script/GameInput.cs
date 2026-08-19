@@ -27,6 +27,12 @@ public class GameInput : MonoBehaviour
 
     private GameControl gameControl;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
+
     public enum BindingType
     {
         Up,
@@ -48,11 +54,29 @@ public class GameInput : MonoBehaviour
             gameControl.LoadBindingOverridesFromJson(PlayerPrefs.GetString(GAMEINPUT_BINDINGS));
         }
 
-        gameControl.Player.Enable();
+    }
 
+    private void OnEnable()
+    {
+        if (gameControl == null)
+            return;
+
+        // InputAction 回调与组件启用状态保持成对，禁用输入组件后不会继续响应按键。
         gameControl.Player.Interact.performed += InteractP1_Performed;
         gameControl.Player.Operate.performed += OperateP1_Performed;
         gameControl.Player.Pause.performed += Pause_Performed;
+        gameControl.Player.Enable();
+    }
+
+    private void OnDisable()
+    {
+        if (gameControl == null)
+            return;
+
+        gameControl.Player.Interact.performed -= InteractP1_Performed;
+        gameControl.Player.Operate.performed -= OperateP1_Performed;
+        gameControl.Player.Pause.performed -= Pause_Performed;
+        gameControl.Player.Disable();
     }
 
     public void ReBinding(BindingType bindingType,Action onComplete)
@@ -133,11 +157,9 @@ public class GameInput : MonoBehaviour
 
     private void OnDestroy()
     {
-        gameControl.Player.Interact.performed -= InteractP1_Performed;
-        gameControl.Player.Operate.performed -= OperateP1_Performed;
-        gameControl.Player.Pause.performed -= Pause_Performed;
-
-        gameControl.Dispose();
+        gameControl?.Dispose();
+        if (Instance == this)
+            Instance = null;
     }
 
     private void Pause_Performed(UnityEngine.InputSystem.InputAction.CallbackContext obj)

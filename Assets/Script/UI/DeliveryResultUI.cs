@@ -9,13 +9,43 @@ public class DeliveryResultUI : MonoBehaviour
     [SerializeField] private Animator deliverySuccessUIAnimator;
     [SerializeField] private Animator deliveryFailUIAnimator;
 
-    // ¼ÇÂ¼µ±Ç°ÏÔÊ¾µÄÊÇÄÄÒ»¸ö£¬·½±ãÒş²Ø
+    // è®°å½•å½“å‰æ˜¾ç¤ºçš„ç»“æœï¼Œä¸‹ä¸€æ¬¡ç»“æœå‡ºç°å‰å…ˆæŠŠæ—§æç¤ºéšè—ã€‚
     private GameObject currentActiveUI;
+    private OrderManager subscribedOrderManager;
 
     private void Start()
     {
-        OrderManager.Instance.OnRecipeSuccessed += OrderManager_OnRecipeSuccessed;
-        OrderManager.Instance.OnRecipeFailed += OrderManager_OnRecipeFailed;
+        SubscribeToOrderManager();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToOrderManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromOrderManager();
+    }
+
+    private void SubscribeToOrderManager()
+    {
+        if (subscribedOrderManager != null || OrderManager.Instance == null)
+            return;
+
+        subscribedOrderManager = OrderManager.Instance;
+        subscribedOrderManager.OnRecipeSuccessed += OrderManager_OnRecipeSuccessed;
+        subscribedOrderManager.OnRecipeFailed += OrderManager_OnRecipeFailed;
+    }
+
+    private void UnsubscribeFromOrderManager()
+    {
+        if (subscribedOrderManager == null)
+            return;
+
+        subscribedOrderManager.OnRecipeSuccessed -= OrderManager_OnRecipeSuccessed;
+        subscribedOrderManager.OnRecipeFailed -= OrderManager_OnRecipeFailed;
+        subscribedOrderManager = null;
     }
 
     private void OrderManager_OnRecipeFailed(object sender, System.EventArgs e)
@@ -30,25 +60,23 @@ public class DeliveryResultUI : MonoBehaviour
 
     private void ShowResult(GameObject uiToShow)
     {
-        // 1. Èç¹ûÓĞ¾ÉµÄ UI ÏÔÊ¾£¬ÏÈÒş²Ø£¨ÕâÒ»²½ºÜÖØÒª£¬·ÀÖ¹ÖØµş£©
+        // å…ˆéšè—æ—§ç»“æœï¼Œé˜²æ­¢æˆåŠŸå’Œå¤±è´¥åŠ¨ç”»åŒæ—¶å åœ¨ä¸€èµ·ã€‚
         if (currentActiveUI != null)
         {
             currentActiveUI.SetActive(false);
         }
 
-        // 2. ¼¤»îĞÂµÄ UI
         currentActiveUI = uiToShow;
         currentActiveUI.SetActive(true);
 
-        // 3. »ñÈ¡ Animator
         Animator anim = currentActiveUI.GetComponent<Animator>();
 
-        // 4. ¹Ø¼ü£ºÏÈÖØÖÃ Trigger£¬ÔÙÉèÖÃ Trigger
+        // åŒä¸€ä¸ªç»“æœè¿ç»­å‡ºç°æ—¶å…ˆé‡ç½® Triggerï¼Œç¡®ä¿åŠ¨ç”»å¯ä»¥ä»å¤´æ’­æ”¾ã€‚
         anim.ResetTrigger(IS_SHOW);
         anim.SetTrigger(IS_SHOW);
     }
 
-    // Õâ¸ö·½·¨ÓÃÀ´ÔÚ¶¯»­²¥Íêºóµ÷ÓÃ£¨ÅäºÏ Animation Event£©
+    // ç”±ç»“æœåŠ¨ç”»æœ€åä¸€å¸§çš„ Animation Event è°ƒç”¨ã€‚
     public void Hide()
     {
         if (currentActiveUI != null)

@@ -21,6 +21,13 @@ public class OrderManager : MonoBehaviour
     private bool isStartOrder = false;
     private int orderCount = 0;
     private int successDeliveryOrderCount = 0;
+    private GameManager subscribedGameManager;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
 
     private void Awake()
     {
@@ -29,7 +36,41 @@ public class OrderManager : MonoBehaviour
 
     private void Start()
     {
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
     }
 
     private void GameManager_OnStateChanged(object sender, EventArgs e)

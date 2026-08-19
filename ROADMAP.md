@@ -14,7 +14,7 @@
 - Unity：`2022.3.62f1c1`
 - 核心循环：拿取食材 → 加工 → 装盘 → 交付
 - 模式现状：主菜单已支持独自挑战、AI 协作和本地双人，GameManager 会按模式分配控制权
-- AI：已拆分目标选择、订单规划、动作和移动模块；仍采用直线移动
+- AI：已拆分目标选择、订单规划、动作和移动模块；移动模块已接入 NavMesh，并具备卡住重规划、目标超时和玩家避让
 - 移动：真人和 AI 已迁移到 `CharacterController.Move()`，仍需完成完整实机回归
 - 自动化：具备 Windows 构建工作流；测试覆盖仍很少
 
@@ -37,22 +37,26 @@
 
 ### 2. AI 寻路与脱困
 
-- [ ] 选择路径点网络、网格寻路或 NavMesh 方案
-- [ ] AI 不再只沿直线穿越厨房布局
-- [ ] 检测连续数秒没有产生有效位移
-- [ ] 卡住时重新规划路径或更换目标
-- [ ] 目标柜台增加到达超时
-- [ ] 动态避让玩家和繁忙通道
+- [x] 选择路径点网络、网格寻路或 NavMesh 方案
+- [x] AI 不再只沿直线穿越厨房布局
+- [~] 检测连续数秒没有产生有效位移
+- [~] 卡住时重新规划路径或更换目标
+- [~] 目标柜台增加到达超时
+- [~] 动态避让玩家和繁忙通道
+
+实现记录（2026-08-19）：NavMesh 只负责规划和局部避障，角色仍由 `CharacterController.Move()` 执行真实位移。AI 每 `0.08m` 记录一次有效进展；连续 `2s` 无进展时重新采样柜台站位，最多重试 `2` 次；追逐同一目标超过 `12s` 会放弃。真人停下 `0.5s` 后以 Carving 障碍参与重规划，真人占用柜台时 AI 会短暂排除该柜台。Unity 冒烟测试通过：20 秒内移动 `54.25m`，完整路径、路径拐点、NavMesh 贴合及真人动态障碍均正常。带 `[~]` 的条目已完成代码实现，仍需按下方 10 局场景清单完成最终实机验收。
 
 验收：让 AI 连续运行至少 10 局，不出现永久卡墙或无限等待。
 
 ### 3. 修复事件生命周期
 
-- [ ] 移除 `ClearStaticData.Start()` 的不确定清理时序
-- [ ] 静态事件改用 `RuntimeInitializeOnLoadMethod(SubsystemRegistration)` 重置
-- [ ] 普通事件统一在 `OnEnable` 订阅、`OnDisable` 解绑
-- [ ] 检查 UI、OrderManager、SoundManager、GameManager 的所有订阅
-- [ ] 防止重进场景后重复响应事件
+- [x] 移除 `ClearStaticData.Start()` 的不确定清理时序
+- [x] 静态事件改用 `RuntimeInitializeOnLoadMethod(SubsystemRegistration)` 重置
+- [x] 普通事件统一在 `OnEnable` 订阅、`OnDisable` 解绑
+- [x] 检查 UI、OrderManager、SoundManager、GameManager 的所有订阅
+- [~] 防止重进场景后重复响应事件
+
+实现记录（2026-08-19）：`KitchenObjectHolder`、`CuttingCounter` 和 `TrashCounter` 的静态事件已由各自拥有者在 `SubsystemRegistration` 阶段自动重置；`ClearStaticData` 不再使用 `Start()` 清理。GameInput、Player、AI、Manager、游戏 UI 与按钮监听已改为 `OnEnable`/`OnDisable` 对称管理，并保存实际订阅源，避免场景切换时向错误的单例解绑。新增 3 项 EditMode 生命周期测试，结果 `3 passed / 0 failed`。仍需完成反复进入游戏、返回菜单和重新开始至少 20 次的人工验收，完成后将最后一项改为 `[x]`。
 
 验收：反复开始、退出、重新开始至少 20 次，没有重复音效、重复 UI 或残留回调。
 

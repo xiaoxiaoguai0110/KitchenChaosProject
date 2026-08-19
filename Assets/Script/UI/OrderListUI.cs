@@ -5,13 +5,43 @@ public class OrderListUI : MonoBehaviour
 {
     [SerializeField] private Transform recipeParent;
     [SerializeField] private RecipeUI recipeUITemplate;
+    private OrderManager subscribedOrderManager;
 
     private void Start()
     {
         recipeUITemplate.gameObject.SetActive(false);
-        OrderManager.Instance.OnRecipeSpawned += OrderManager_OnRecipeSpawned;
-        OrderManager.Instance.OnRecipeSuccessed += OrderManger_OnRecipeSuccessed;
+        SubscribeToOrderManager();
         UpdateUI();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToOrderManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromOrderManager();
+    }
+
+    private void SubscribeToOrderManager()
+    {
+        if (subscribedOrderManager != null || OrderManager.Instance == null)
+            return;
+
+        subscribedOrderManager = OrderManager.Instance;
+        subscribedOrderManager.OnRecipeSpawned += OrderManager_OnRecipeSpawned;
+        subscribedOrderManager.OnRecipeSuccessed += OrderManger_OnRecipeSuccessed;
+    }
+
+    private void UnsubscribeFromOrderManager()
+    {
+        if (subscribedOrderManager == null)
+            return;
+
+        subscribedOrderManager.OnRecipeSpawned -= OrderManager_OnRecipeSpawned;
+        subscribedOrderManager.OnRecipeSuccessed -= OrderManger_OnRecipeSuccessed;
+        subscribedOrderManager = null;
     }
 
     private void OrderManger_OnRecipeSuccessed(object sender, System.EventArgs e)
@@ -35,7 +65,13 @@ public class OrderListUI : MonoBehaviour
         foreach (Transform child in toDestroy)
             Destroy(child.gameObject);
 
-        List<RecipeSO> recipeSOList = OrderManager.Instance.GetOrderList();
+        OrderManager orderManager = subscribedOrderManager != null
+            ? subscribedOrderManager
+            : OrderManager.Instance;
+        if (orderManager == null)
+            return;
+
+        List<RecipeSO> recipeSOList = orderManager.GetOrderList();
         foreach (RecipeSO recipeSO in recipeSOList)
         {
             // 模板保留在层级中并保持隐藏，每份真实订单都从它复制，便于统一调整卡片样式。
@@ -45,12 +81,4 @@ public class OrderListUI : MonoBehaviour
         }
     }
 
-    private void OnDestroy()
-    {
-        if (OrderManager.Instance == null)
-            return;
-
-        OrderManager.Instance.OnRecipeSpawned -= OrderManager_OnRecipeSpawned;
-        OrderManager.Instance.OnRecipeSuccessed -= OrderManger_OnRecipeSuccessed;
-    }
 }

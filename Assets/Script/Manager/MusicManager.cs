@@ -12,10 +12,22 @@ public class MusicManager : MonoBehaviour
     private float originalVolume;
     private int volume = 5;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
+
     private void Awake()
     {
         Instance = this;
         LoadVolume();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
     }
 
     void Start()

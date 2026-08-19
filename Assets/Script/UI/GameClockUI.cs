@@ -18,12 +18,45 @@ public class GameClockUI : MonoBehaviour
     [SerializeField] private float warningPulseAmount = .08f;
 
     private Vector3 timeTextBaseScale;
+    private GameManager subscribedGameManager;
+
+    private void Awake()
+    {
+        timeTextBaseScale = timeText.transform.localScale;
+    }
 
     private void Start()
     {
-        timeTextBaseScale = timeText.transform.localScale;
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
         Hide();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
     }
 
     private void GameManager_OnStateChanged(object sender, System.EventArgs e)
@@ -65,9 +98,4 @@ public class GameClockUI : MonoBehaviour
         uiParent.SetActive(false);
     }
 
-    private void OnDestroy()
-    {
-        if (GameManager.Instance != null)
-            GameManager.Instance.OnStateChanged -= GameManager_OnStateChanged;
-    }
 }
