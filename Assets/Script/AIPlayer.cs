@@ -80,9 +80,16 @@ public class AIPlayer : MonoBehaviour
 
     private void Update()
     {
-        if (!GameManager.Instance.IsGamePlayingState())
+        if (GameManager.Instance == null || !GameManager.Instance.IsGamePlayingState())
         {
-            movement.Stop();
+            movement?.Stop();
+            return;
+        }
+
+        if (!GameManager.Instance.IsGameSimulationRunning())
+        {
+            // 暂停时保留当前目标和 NavMesh 路径，恢复后可以从原计划继续。
+            player.StopMovement();
             return;
         }
 

@@ -84,7 +84,6 @@ public class SoundManager : MonoBehaviour
 
     private void TrashCounter_OnObjectTrashed(object sender, System.EventArgs e)
     {
-        print("11");
         PlaySound(audioClipRefsSO.trash);
     }
 

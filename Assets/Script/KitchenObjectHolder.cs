@@ -5,8 +5,22 @@ using UnityEngine;
 
 public class KitchenObjectHolder : MonoBehaviour
 {
+    public sealed class KitchenObjectTransferEventArgs : EventArgs
+    {
+        public KitchenObjectHolder Holder { get; }
+        public KitchenObject KitchenObject { get; }
+
+        public KitchenObjectTransferEventArgs(KitchenObjectHolder holder, KitchenObject kitchenObject)
+        {
+            Holder = holder;
+            KitchenObject = kitchenObject;
+        }
+    }
+
     public static event EventHandler OnDrop;
     public static event EventHandler OnPickup;
+    public static event EventHandler<KitchenObjectTransferEventArgs> OnKitchenObjectDropped;
+    public static event EventHandler<KitchenObjectTransferEventArgs> OnKitchenObjectPickedUp;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStaticEvents()
@@ -14,6 +28,8 @@ public class KitchenObjectHolder : MonoBehaviour
         // 进入新的 Play Session 时由 Unity 自动调用，即使关闭 Domain Reload 也不会保留旧订阅者。
         OnDrop = null;
         OnPickup = null;
+        OnKitchenObjectDropped = null;
+        OnKitchenObjectPickedUp = null;
     }
 
     [SerializeField] private Transform holdPoint;
@@ -35,17 +51,29 @@ public class KitchenObjectHolder : MonoBehaviour
     }
     public void SetKitchenObject(KitchenObject kitchenObject) 
     {
-        if (this is BaseCounter&&this.kitchenObject != kitchenObject && kitchenObject != null)
-        {
-            OnDrop?.Invoke(this, EventArgs.Empty);
-        }else if(this is Player && this.kitchenObject != kitchenObject && kitchenObject != null)
-        {
-            OnPickup?.Invoke(this, EventArgs.Empty);
-        }
+        bool changedToNewObject = this.kitchenObject != kitchenObject && kitchenObject != null;
         this.kitchenObject = kitchenObject;
+
+        if (kitchenObject == null)
+            return;
+
         kitchenObject.transform.localPosition = Vector3.zero;
 
-        
+        // 旧事件继续供音效系统使用；带上下文的新事件让表现层知道具体要动画哪个物体。
+        if (this is BaseCounter && changedToNewObject)
+        {
+            OnDrop?.Invoke(this, EventArgs.Empty);
+            OnKitchenObjectDropped?.Invoke(
+                this,
+                new KitchenObjectTransferEventArgs(this, kitchenObject));
+        }
+        else if (this is Player && changedToNewObject)
+        {
+            OnPickup?.Invoke(this, EventArgs.Empty);
+            OnKitchenObjectPickedUp?.Invoke(
+                this,
+                new KitchenObjectTransferEventArgs(this, kitchenObject));
+        }
     }
     public Transform GetHoldPoint()
     {
@@ -55,12 +83,12 @@ public class KitchenObjectHolder : MonoBehaviour
     {
         if (sourceHolder.GetKitchenObject() == null)
         {
-            Debug.LogWarning("Դ�������ϲ�����ʯ�ģ�ת��ʧ��");
+            Debug.LogWarning("源容器中没有可转移的物品，转移失败。");
             return;
         }
         if (targetHolder.GetKitchenObject() != null)
         {
-            Debug.LogWarning("Ŀ��������ϴ���ʯ�ģ�ת��ʧ��");
+            Debug.LogWarning("目标容器已经持有物品，转移失败。");
             return;
         }
         targetHolder.AddKitchenObject(sourceHolder.GetKitchenObject());

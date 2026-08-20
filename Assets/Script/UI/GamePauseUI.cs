@@ -1,3 +1,4 @@
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -5,10 +6,16 @@ public class GamePauseUI : MonoBehaviour
 {
     [SerializeField] private GameObject uiParent;
     [SerializeField] private Button resumeButton;
+    [SerializeField] private Button restartButton;
     [SerializeField] private Button menuButton;
     [SerializeField] private Button settingButton;
     [SerializeField] private UIPopupAnimator popupAnimator;
     private GameManager subscribedGameManager;
+
+    private void Awake()
+    {
+        EnsureRestartButton();
+    }
 
     private void Start()
     {
@@ -19,17 +26,19 @@ public class GamePauseUI : MonoBehaviour
     private void OnEnable()
     {
         SubscribeToGameManager();
-        resumeButton.onClick.AddListener(ResumeGame);
-        menuButton.onClick.AddListener(ReturnToMenu);
-        settingButton.onClick.AddListener(OpenSettings);
+        resumeButton?.onClick.AddListener(ResumeGame);
+        restartButton?.onClick.AddListener(RestartGame);
+        menuButton?.onClick.AddListener(ReturnToMenu);
+        settingButton?.onClick.AddListener(OpenSettings);
     }
 
     private void OnDisable()
     {
         UnsubscribeFromGameManager();
-        resumeButton.onClick.RemoveListener(ResumeGame);
-        menuButton.onClick.RemoveListener(ReturnToMenu);
-        settingButton.onClick.RemoveListener(OpenSettings);
+        resumeButton?.onClick.RemoveListener(ResumeGame);
+        restartButton?.onClick.RemoveListener(RestartGame);
+        menuButton?.onClick.RemoveListener(ReturnToMenu);
+        settingButton?.onClick.RemoveListener(OpenSettings);
     }
 
     private void SubscribeToGameManager()
@@ -66,7 +75,7 @@ public class GamePauseUI : MonoBehaviour
     {
         uiParent.SetActive(true);
         popupAnimator?.PlayShow();
-        resumeButton.Select();
+        resumeButton?.Select();
     }
 
     private void Hide()
@@ -79,6 +88,11 @@ public class GamePauseUI : MonoBehaviour
         GameManager.Instance.ToggleGame();
     }
 
+    private void RestartGame()
+    {
+        Loader.Load(Loader.Scene.GameScene);
+    }
+
     private void ReturnToMenu()
     {
         Loader.Load(Loader.Scene.GameMenuScene);
@@ -87,6 +101,31 @@ public class GamePauseUI : MonoBehaviour
     private void OpenSettings()
     {
         SettingsUI.Instance.Show();
+    }
+
+    private void EnsureRestartButton()
+    {
+        if (restartButton != null || menuButton == null)
+            return;
+
+        // 兼容旧场景：复制现有按钮，便不需要学习者重新在 Inspector 拖引用。
+        restartButton = Instantiate(menuButton, menuButton.transform.parent);
+        restartButton.name = "RestartButton";
+        restartButton.onClick = new Button.ButtonClickedEvent();
+
+        TextMeshProUGUI label = restartButton.GetComponentInChildren<TextMeshProUGUI>(true);
+        if (label != null)
+            label.text = "重新开始";
+
+        RectTransform resumeRect = resumeButton?.transform as RectTransform;
+        RectTransform restartRect = restartButton.transform as RectTransform;
+        RectTransform settingRect = settingButton?.transform as RectTransform;
+        RectTransform menuRect = menuButton.transform as RectTransform;
+
+        if (resumeRect != null) resumeRect.anchoredPosition = new Vector2(0f, 95f);
+        if (restartRect != null) restartRect.anchoredPosition = new Vector2(0f, 0f);
+        if (settingRect != null) settingRect.anchoredPosition = new Vector2(0f, -95f);
+        if (menuRect != null) menuRect.anchoredPosition = new Vector2(0f, -190f);
     }
 
 }

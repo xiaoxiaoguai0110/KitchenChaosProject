@@ -11,6 +11,7 @@ public static class GameSceneUIBuilder
 {
     private const string GameScenePath = "Assets/Scenes/2-GameScene.unity";
     private const string IceFontPath = "Assets/Fonts/ICE SDF.asset";
+    // Codex 通过 Library 下的一次性标记请求编辑器安全地重建并保存场景 UI。
     private const string ApplyRequestFile = "CodexApplyGameUI.flag";
 
     private static readonly Color32 OverlayColor = new Color32(18, 14, 18, 218);
@@ -102,6 +103,7 @@ public static class GameSceneUIBuilder
         Transform canvas = canvasObject.transform;
         StyleOrderList(FindDeep(canvas, "OrderListUI"));
         StyleGameClock(FindDeep(canvas, "GameClockUI"));
+        StyleInteractionPrompts(canvas);
         StyleCountDown(FindDeep(canvas, "CountDownUI"));
         StylePause(FindDeep(canvas, "GamePauseUI"));
         StyleSettings(FindDeep(canvas, "SettingsUI"));
@@ -267,6 +269,66 @@ public static class GameSceneUIBuilder
             new Vector2(.5f, 0f), new Vector2(0f, -30f), new Vector2(320f, 64f));
     }
 
+    private static void StyleInteractionPrompts(Transform canvas)
+    {
+        CreateInteractionPrompt(canvas, 0, "Player1InteractionPrompt", -240f, OrangeColor);
+        CreateInteractionPrompt(canvas, 1, "Player2InteractionPrompt", 240f, TealColor);
+    }
+
+    private static void CreateInteractionPrompt(
+        Transform canvas,
+        int playerIndex,
+        string objectName,
+        float horizontalPosition,
+        Color accentColor)
+    {
+        Transform existingRoot = FindDirectChild(canvas, objectName);
+        GameObject rootObject = existingRoot != null
+            ? existingRoot.gameObject
+            : CreateUIObject(objectName, canvas);
+        RectTransform root = (RectTransform)rootObject.transform;
+        SetAnchoredRect(root, new Vector2(.5f, 0f), new Vector2(.5f, 0f),
+            new Vector2(.5f, 0f), new Vector2(horizontalPosition, 34f), new Vector2(440f, 132f));
+
+        Image promptPanel = GetOrCreateImage(root, "PromptPanel");
+        promptPanel.color = PanelColor;
+        promptPanel.raycastTarget = false;
+        SetAnchoredRect(promptPanel.rectTransform, new Vector2(.5f, 0f), new Vector2(.5f, 0f),
+            new Vector2(.5f, 0f), Vector2.zero, new Vector2(410f, 58f));
+        EnsureOutline(promptPanel.gameObject, accentColor, new Vector2(2f, -2f));
+
+        TextMeshProUGUI promptText = GetOrCreateText(promptPanel.transform, "PromptText", "[E] 交互");
+        promptText.fontSize = 24f;
+        promptText.color = CreamColor;
+        promptText.alignment = TextAlignmentOptions.Center;
+        SetFullStretch(promptText.rectTransform);
+
+        Image feedbackPanel = GetOrCreateImage(root, "FeedbackPanel");
+        feedbackPanel.color = new Color32(87, 16, 13, 245);
+        feedbackPanel.raycastTarget = false;
+        SetAnchoredRect(feedbackPanel.rectTransform, new Vector2(.5f, 0f), new Vector2(.5f, 0f),
+            new Vector2(.5f, 0f), new Vector2(0f, 72f), new Vector2(410f, 52f));
+        EnsureOutline(feedbackPanel.gameObject, OrangeColor, new Vector2(2f, -2f));
+        CanvasGroup feedbackCanvasGroup = EnsureComponent<CanvasGroup>(feedbackPanel.gameObject);
+
+        TextMeshProUGUI feedbackText = GetOrCreateText(
+            feedbackPanel.transform,
+            "FeedbackText",
+            "当前无法交互");
+        feedbackText.fontSize = 21f;
+        feedbackText.color = CreamColor;
+        feedbackText.alignment = TextAlignmentOptions.Center;
+        SetFullStretch(feedbackText.rectTransform);
+
+        InteractionPromptUI promptUI = EnsureComponent<InteractionPromptUI>(rootObject);
+        AssignInt(promptUI, "playerIndex", playerIndex);
+        AssignReference(promptUI, "promptPanel", promptPanel.gameObject);
+        AssignReference(promptUI, "promptText", promptText);
+        AssignReference(promptUI, "feedbackPanel", feedbackPanel.gameObject);
+        AssignReference(promptUI, "feedbackText", feedbackText);
+        AssignReference(promptUI, "feedbackCanvasGroup", feedbackCanvasGroup);
+    }
+
     private static void StylePause(Transform root)
     {
         if (root == null)
@@ -283,6 +345,7 @@ public static class GameSceneUIBuilder
         RectTransform panel = GetOrCreatePanel(uiParent, "PausePanel", new Vector2(520f, 650f));
         ReparentDirectChild(uiParent, panel, "Text (TMP)");
         ReparentDirectChild(uiParent, panel, "ResumeButton");
+        ReparentDirectChild(uiParent, panel, "RestartButton");
         ReparentDirectChild(uiParent, panel, "SettingButton");
         ReparentDirectChild(uiParent, panel, "MenuButton");
 
@@ -300,14 +363,17 @@ public static class GameSceneUIBuilder
             new Vector2(.5f, 1f), new Vector2(0f, -162f), new Vector2(420f, 34f));
 
         Button resumeButton = FindDirectChild(panel, "ResumeButton").GetComponent<Button>();
+        Button restartButton = GetOrCreateButton(panel, "RestartButton");
         Button settingButton = FindDirectChild(panel, "SettingButton").GetComponent<Button>();
         Button menuButton = FindDirectChild(panel, "MenuButton").GetComponent<Button>();
-        PlaceAndStyleButton(resumeButton, new Vector2(0f, 50f), new Vector2(390f, 78f), OrangeColor, "继续");
-        PlaceAndStyleButton(settingButton, new Vector2(0f, -65f), new Vector2(390f, 78f), TealColor, "设置");
-        PlaceAndStyleButton(menuButton, new Vector2(0f, -180f), new Vector2(390f, 78f), DangerColor, "返回菜单");
+        PlaceAndStyleButton(resumeButton, new Vector2(0f, 95f), new Vector2(390f, 72f), OrangeColor, "继续");
+        PlaceAndStyleButton(restartButton, new Vector2(0f, 0f), new Vector2(390f, 72f), OrangeDarkColor, "重新开始");
+        PlaceAndStyleButton(settingButton, new Vector2(0f, -95f), new Vector2(390f, 72f), TealColor, "设置");
+        PlaceAndStyleButton(menuButton, new Vector2(0f, -190f), new Vector2(390f, 72f), DangerColor, "返回菜单");
 
         UIPopupAnimator popup = ConfigurePopup(uiParent, panel);
         GamePauseUI pauseUI = root.GetComponent<GamePauseUI>();
+        AssignReference(pauseUI, "restartButton", restartButton);
         AssignReference(pauseUI, "popupAnimator", popup);
     }
 
@@ -343,14 +409,14 @@ public static class GameSceneUIBuilder
             new Vector2(.5f, 1f), new Vector2(0f, -172f), new Vector2(500f, 34f));
 
         Transform label = FindDirectChild(panel, "LabelText");
-        StyleText(label, "成功完成订单", 32f, MutedCreamColor, TextAlignmentOptions.Center);
+        StyleText(label, "本局统计", 32f, MutedCreamColor, TextAlignmentOptions.Center);
         SetAnchoredRect((RectTransform)label, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
             new Vector2(.5f, .5f), new Vector2(0f, 82f), new Vector2(500f, 60f));
 
         Transform number = FindDirectChild(panel, "NumberText");
-        StyleText(number, null, 120f, CreamColor, TextAlignmentOptions.Center);
+        StyleText(number, null, 38f, CreamColor, TextAlignmentOptions.Center);
         SetAnchoredRect((RectTransform)number, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
-            new Vector2(.5f, .5f), new Vector2(0f, -18f), new Vector2(300f, 150f));
+            new Vector2(.5f, .5f), new Vector2(0f, -18f), new Vector2(480f, 170f));
         EnsureShadow(number.gameObject, new Color32(25, 10, 5, 180), new Vector2(6f, -6f));
 
         Button restartButton = GetOrCreateButton(panel, "RestartButton");
@@ -384,7 +450,7 @@ public static class GameSceneUIBuilder
             "SettingsTitle", "SoundButton", "MusicButton", "UpText", "UpKeyButton",
             "DownText", "DownKeyButton", "LeftText", "LeftKeyButton", "RightText",
             "RightKeyButton", "InteractText", "InteractButton", "OperateText",
-            "OperateButton", "PauseText", "PauseButton", "CloseButton"
+            "OperateButton", "PauseText", "PauseButton", "CloseButton", "PlayerSelectButton"
         };
         foreach (string childName in childrenToMove)
             ReparentDirectChild(uiParent, panel, childName);
@@ -399,6 +465,8 @@ public static class GameSceneUIBuilder
         StyleSectionCaption(audioCaption, new Vector2(-250f, 298f));
         TextMeshProUGUI controlsCaption = GetOrCreateText(panel, "ControlsCaption", "CONTROLS  •  操作");
         StyleSectionCaption(controlsCaption, new Vector2(-250f, 112f));
+        Button playerSelectButton = GetOrCreateButton(panel, "PlayerSelectButton");
+        PlaceAndStyleButton(playerSelectButton, new Vector2(145f, 112f), new Vector2(250f, 44f), CardColor, "当前：玩家 1");
 
         Button soundButton = FindDirectChild(panel, "SoundButton").GetComponent<Button>();
         Button musicButton = FindDirectChild(panel, "MusicButton").GetComponent<Button>();
@@ -428,6 +496,8 @@ public static class GameSceneUIBuilder
 
         UIPopupAnimator popup = ConfigurePopup(uiParent, panel);
         SettingsUI settingsUI = root.GetComponent<SettingsUI>();
+        AssignReference(settingsUI, "playerSelectButton", playerSelectButton);
+        AssignReference(settingsUI, "playerSelectButtonText", playerSelectButton.GetComponentInChildren<TextMeshProUGUI>());
         AssignReference(settingsUI, "popupAnimator", popup);
     }
 
@@ -667,6 +737,24 @@ public static class GameSceneUIBuilder
         }
 
         property.objectReferenceValue = value;
+        serializedObject.ApplyModifiedPropertiesWithoutUndo();
+        EditorUtility.SetDirty(target);
+    }
+
+    private static void AssignInt(UnityEngine.Object target, string propertyName, int value)
+    {
+        if (target == null)
+            return;
+
+        SerializedObject serializedObject = new SerializedObject(target);
+        SerializedProperty property = serializedObject.FindProperty(propertyName);
+        if (property == null)
+        {
+            Debug.LogWarning($"[GameSceneUIBuilder] {target.name} 缺少字段 {propertyName}。");
+            return;
+        }
+
+        property.intValue = value;
         serializedObject.ApplyModifiedPropertiesWithoutUndo();
         EditorUtility.SetDirty(target);
     }

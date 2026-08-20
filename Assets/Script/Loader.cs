@@ -23,6 +23,8 @@ public static class Loader
 
     public static void LoadBack()
     {
+        // LoadBack 也可能被其他脚本直接调用，因此不能只依赖 Load() 恢复时间。
+        Time.timeScale = 1;
         SceneManager.LoadScene((int)targetScene);
     }
 

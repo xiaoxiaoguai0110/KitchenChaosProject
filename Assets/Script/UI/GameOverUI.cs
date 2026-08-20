@@ -11,6 +11,11 @@ public class GameOverUI : MonoBehaviour
     [SerializeField] private UIPopupAnimator popupAnimator;
     private GameManager subscribedGameManager;
 
+    private void Awake()
+    {
+        ConfigureSummaryText();
+    }
+
     private void Start()
     {
         Hide();
@@ -59,7 +64,14 @@ public class GameOverUI : MonoBehaviour
 
     private void Show()
     {
-        numberText.text = OrderManager.Instance.GetSuccessDeliveryCount().ToString();
+        if (OrderManager.Instance != null && numberText != null)
+        {
+            numberText.text =
+                $"成功订单  {OrderManager.Instance.GetSuccessDeliveryCount()}\n" +
+                $"失败订单  {OrderManager.Instance.GetFinalFailedOrderCount()}\n" +
+                $"最终分数  {OrderManager.Instance.GetFinalScore()}";
+        }
+
         uiParent.SetActive(true);
         popupAnimator?.PlayShow();
         restartButton?.Select();
@@ -78,6 +90,30 @@ public class GameOverUI : MonoBehaviour
     private void ReturnToMenu()
     {
         Loader.Load(Loader.Scene.GameMenuScene);
+    }
+
+    private void ConfigureSummaryText()
+    {
+        if (numberText == null)
+            return;
+
+        numberText.fontSize = 38f;
+        numberText.enableWordWrapping = false;
+        numberText.alignment = TextAlignmentOptions.Center;
+        numberText.rectTransform.sizeDelta = new Vector2(480f, 170f);
+
+        // 旧界面的标题是“成功完成订单”，现在改为三项统计的总标题。
+        if (uiParent == null)
+            return;
+
+        foreach (TextMeshProUGUI text in uiParent.GetComponentsInChildren<TextMeshProUGUI>(true))
+        {
+            if (text.gameObject.name == "LabelText")
+            {
+                text.text = "本局统计";
+                break;
+            }
+        }
     }
 
 }

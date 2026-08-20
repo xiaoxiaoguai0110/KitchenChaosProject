@@ -14,6 +14,9 @@ public class PlatesCounter : BaseCounter
 
     private void Update()
     {
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameSimulationRunning())
+            return;
+
         if(platesList.Count < plateCountMax)
         {
             timer += Time.deltaTime;
@@ -29,8 +32,11 @@ public class PlatesCounter : BaseCounter
 
     public override void Interact(Player player)
     {
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameSimulationRunning())
+            return;
+
         if (player.IsHaveKitchenObject() == false)
-        {//����û��ʳ��
+        {// 玩家手中没有物品
             if(platesList.Count > 0)
             {
                 player.AddKitchenObject(platesList[platesList.Count - 1]);
@@ -39,8 +45,29 @@ public class PlatesCounter : BaseCounter
         }
     }
 
+    public override bool CanInteract(Player player, out string failureReason)
+    {
+        if (player.IsHaveKitchenObject())
+        {
+            failureReason = "双手已占用，不能拿盘子";
+            return false;
+        }
+
+        if (platesList.Count == 0)
+        {
+            failureReason = "盘子还没有准备好";
+            return false;
+        }
+
+        failureReason = null;
+        return true;
+    }
+
     public void SpawnPlate()
     {
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameSimulationRunning())
+            return;
+
         if(platesList.Count >= plateCountMax)
         {
             timer = 0;

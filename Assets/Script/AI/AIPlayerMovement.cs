@@ -97,7 +97,7 @@ internal sealed class AIPlayerMovement
         // SetDestination 后 Unity 可能需要一帧计算路线，等待期间不能把“暂无路径”误判为失败。
         if (agent.pathPending)
         {
-            player.SetIsWalking(false);
+            player.StopMovement();
             return AIMoveResult.Moving;
         }
 
@@ -130,23 +130,22 @@ internal sealed class AIPlayerMovement
 
         if (velocity.sqrMagnitude <= MinimumMoveSpeed * MinimumMoveSpeed)
         {
-            player.SetIsWalking(false);
+            player.StopMovement();
             return AIMoveResult.Moving;
         }
 
-        player.Move(velocity * deltaTime);
+        Vector3 actualVelocity = player.MoveTowardsVelocity(velocity, deltaTime);
 
         // CharacterController 移动了 Transform 后，要把真实位置同步回 Agent 的内部模拟位置，
         // 否则路径规划位置会和画面中的角色位置逐帧分离。
         agent.nextPosition = transform.position;
 
-        Vector3 moveDirection = velocity.normalized;
+        Vector3 moveDirection = actualVelocity.normalized;
         transform.forward = Vector3.RotateTowards(
             transform.forward,
             moveDirection,
             RotationSpeed * Mathf.Deg2Rad * deltaTime,
             0f);
-        player.SetIsWalking(true);
         return AIMoveResult.Moving;
     }
 
@@ -173,7 +172,7 @@ internal sealed class AIPlayerMovement
         noProgressTime = 0f;
         targetElapsedTime = 0f;
         repathAttempts = 0;
-        player.SetIsWalking(false);
+        player.StopMovement();
     }
 
     private bool EnsureAgentIsOnNavMesh()
@@ -322,7 +321,7 @@ internal sealed class AIPlayerMovement
         // 重新规划只重置“卡住计时”，目标总超时继续累计，防止无限重试。
         progressSamplePosition = transform.position;
         noProgressTime = 0f;
-        player.SetIsWalking(false);
+        player.StopMovement();
         return true;
     }
 

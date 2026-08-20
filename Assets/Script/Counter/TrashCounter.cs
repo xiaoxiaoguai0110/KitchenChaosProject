@@ -21,4 +21,16 @@ public class TrashCounter : BaseCounter
         }
     }
 
+    public override bool CanInteract(Player player, out string failureReason)
+    {
+        if (!player.IsHaveKitchenObject())
+        {
+            failureReason = "手上没有可以丢弃的东西";
+            return false;
+        }
+
+        failureReason = null;
+        return true;
+    }
+
 }

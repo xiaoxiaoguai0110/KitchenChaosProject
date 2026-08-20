@@ -15,12 +15,16 @@ public class OrderManager : MonoBehaviour
     [SerializeField] private RecipeListSO recipeSOList;
     [SerializeField] private int orderMaxCount = 5;
     [SerializeField] private float orderRate = 2;
+    [Header("Scoring")]
+    [SerializeField, Min(0)] private int scorePerSuccessfulOrder = 100;
+    [SerializeField, Min(0)] private int failedOrderPenalty = 25;
     private List<RecipeSO> orderRecipeSOList = new List<RecipeSO>();
 
     private float orderTimer = 0;
     private bool isStartOrder = false;
     private int orderCount = 0;
     private int successDeliveryOrderCount = 0;
+    private int failedDeliveryOrderCount = 0;
     private GameManager subscribedGameManager;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -75,18 +79,19 @@ public class OrderManager : MonoBehaviour
 
     private void GameManager_OnStateChanged(object sender, EventArgs e)
     {
-        if (GameManager.Instance.IsGamePlayingState()) 
-        {
-            StartSpawnOrder();
-        }
+        // 进入 GamePlaying 才生成订单；进入 GameOver 后立刻关闭生成开关。
+        isStartOrder = subscribedGameManager != null
+            && subscribedGameManager.IsGamePlayingState();
     }
 
     private void Update()
     {
-        if (isStartOrder)
-        {
-            OrderUpdate();
-        }
+        if (!isStartOrder
+            || GameManager.Instance == null
+            || !GameManager.Instance.IsGameSimulationRunning())
+            return;
+
+        OrderUpdate();
     }
 
     private void OrderUpdate()
@@ -114,6 +119,10 @@ public class OrderManager : MonoBehaviour
 
     public void DeliveryRecipe(PlateKitchenObject plateKitchenObject)
     {
+        // 输入事件在暂停时仍可能被触发，因此交付入口自身也必须保护游戏数据。
+        if (GameManager.Instance == null || !GameManager.Instance.IsGameSimulationRunning())
+            return;
+
         RecipeSO correctRecipe = null;
         foreach(RecipeSO recipe in orderRecipeSOList)
         {
@@ -125,15 +134,17 @@ public class OrderManager : MonoBehaviour
 
         if(correctRecipe == null)
         {
-            print("�ϲ�ʧ��");
+            // 先更新统计再广播事件，订阅者收到事件时就能读取到最新数据。
+            failedDeliveryOrderCount++;
+            Debug.Log("上菜失败");
             OnRecipeFailed?.Invoke(this, EventArgs.Empty);
         }
         else
         {
             orderRecipeSOList.Remove(correctRecipe);
-            OnRecipeSuccessed?.Invoke(this, EventArgs.Empty);
             successDeliveryOrderCount++;
-            print("�ϲ˳ɹ�");
+            OnRecipeSuccessed?.Invoke(this, EventArgs.Empty);
+            Debug.Log("上菜成功");
         }
 
     }
@@ -175,12 +186,26 @@ public class OrderManager : MonoBehaviour
 
     public void StartSpawnOrder()
     {
-        isStartOrder = true;
+        isStartOrder = GameManager.Instance != null
+            && GameManager.Instance.IsGamePlayingState();
     }
 
     public int GetSuccessDeliveryCount()
     {
         return successDeliveryOrderCount;
+    }
+
+    public int GetFinalFailedOrderCount()
+    {
+        // 倒计时结束时还留在订单栏里的菜，也属于本局没有完成的订单。
+        return failedDeliveryOrderCount + orderRecipeSOList.Count;
+    }
+
+    public int GetFinalScore()
+    {
+        int score = successDeliveryOrderCount * scorePerSuccessfulOrder
+            - GetFinalFailedOrderCount() * failedOrderPenalty;
+        return Mathf.Max(0, score);
     }
 
 }
