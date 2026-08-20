@@ -25,13 +25,18 @@ internal sealed class AIPlayerTargetSelector
         orderPlanner = new AIOrderPlanner(counters, orderManager, cuttingRecipeList, fryingRecipeList);
     }
 
-    public BaseCounter PickTarget()
+    public BaseCounter PickTarget(BaseCounter excludedCounter = null)
     {
         List<BaseCounter> availableCounters = new List<BaseCounter>();
         if (player.IsHaveKitchenObject())
             FindTargetsForHeldObject(availableCounters);
         else
             FindTargetsForEmptyHands(availableCounters);
+
+        // 真人正在使用或刚刚导致寻路失败的柜台会被短暂排除，
+        // 避免 AI 每帧重新选择同一个繁忙目标。
+        if (excludedCounter != null)
+            availableCounters.RemoveAll(counter => counter == excludedCounter);
 
         return availableCounters.Count == 0
             ? null

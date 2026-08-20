@@ -13,11 +13,69 @@ public class TutorialUI : MonoBehaviour
     [SerializeField] private TextMeshProUGUI interactKeyText;
     [SerializeField] private TextMeshProUGUI operateKeyText;
     [SerializeField] private TextMeshProUGUI pauseKeyText;
+    private GameManager subscribedGameManager;
+    private GameInput subscribedInput;
 
     private void Start()
     {
-        GameManager.Instance.OnStateChanged += GameManager_OnStateChanged;
+        SubscribeToGameManager();
         Show();
+    }
+
+    private void OnEnable()
+    {
+        SubscribeToGameManager();
+        SubscribeToInput();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromGameManager();
+        UnsubscribeFromInput();
+    }
+
+    private void SubscribeToGameManager()
+    {
+        if (subscribedGameManager != null || GameManager.Instance == null)
+            return;
+
+        subscribedGameManager = GameManager.Instance;
+        subscribedGameManager.OnStateChanged += GameManager_OnStateChanged;
+    }
+
+    private void UnsubscribeFromGameManager()
+    {
+        if (subscribedGameManager == null)
+            return;
+
+        subscribedGameManager.OnStateChanged -= GameManager_OnStateChanged;
+        subscribedGameManager = null;
+    }
+
+    private void SubscribeToInput()
+    {
+        if (subscribedInput != null || GameInput.Instance == null)
+            return;
+
+        subscribedInput = GameInput.Instance;
+        subscribedInput.OnBindingDisplayChanged += GameInput_OnBindingDisplayChanged;
+    }
+
+    private void UnsubscribeFromInput()
+    {
+        if (subscribedInput == null)
+            return;
+
+        subscribedInput.OnBindingDisplayChanged -= GameInput_OnBindingDisplayChanged;
+        subscribedInput = null;
+    }
+
+    private void GameInput_OnBindingDisplayChanged(
+        object sender,
+        GameInput.PlayerActionEventArgs e)
+    {
+        if (e.PlayerIndex == 0 && uiParent.activeSelf)
+            UpdateVisual();
     }
 
     private void GameManager_OnStateChanged(object sender, System.EventArgs e)

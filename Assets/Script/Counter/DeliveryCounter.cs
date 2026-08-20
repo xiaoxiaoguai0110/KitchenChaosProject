@@ -12,4 +12,17 @@ public class DeliveryCounter : BaseCounter
             player.DestroyKitchenObject();
         }
     }
+
+    public override bool CanInteract(Player player, out string failureReason)
+    {
+        if (!player.IsHaveKitchenObject()
+            || !player.GetKitchenObject().TryGetComponent<PlateKitchenObject>(out _))
+        {
+            failureReason = "请端着完成的餐盘交付";
+            return false;
+        }
+
+        failureReason = null;
+        return true;
+    }
 }

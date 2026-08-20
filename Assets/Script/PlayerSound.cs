@@ -1,32 +1,38 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerSound : MonoBehaviour
 {
-    private Player player;
-    private float stepSoundRate = 0.13f;
-    private float stepSoundTimer = 0;
+    [Header("Footstep Feel")]
+    [SerializeField, Min(0.05f)] private float slowStepInterval = 0.34f;
+    [SerializeField, Min(0.05f)] private float fastStepInterval = 0.2f;
+    [SerializeField, Range(0f, 1f)] private float slowStepVolume = 0.18f;
+    [SerializeField, Range(0f, 1f)] private float fastStepVolume = 0.3f;
 
-    // Start is called before the first frame update
-    void Start()
+    private Player player;
+    private float stepSoundTimer;
+
+    private void Awake()
     {
         player = GetComponent<Player>();
     }
 
-    // Update is called once per frame
-    void Update()
+    private void Update()
     {
-        stepSoundTimer += Time.deltaTime;
-        if(stepSoundTimer > stepSoundRate)
+        if (player == null || !player.IsWalking || SoundManager.Instance == null)
         {
-            stepSoundTimer = 0;
-            if (player.IsWalking)
-            {
-                float volume = .3f;
-                SoundManager.Instance.PlayStepSound(volume);
-            }
-            
+            stepSoundTimer = 0f;
+            return;
         }
+
+        float speedRatio = player.MovementSpeedNormalized;
+        float stepInterval = Mathf.Lerp(slowStepInterval, fastStepInterval, speedRatio);
+        stepSoundTimer += Time.deltaTime;
+        if (stepSoundTimer < stepInterval)
+            return;
+
+        // 速度越快，脚步间隔越短、音量略高；停止时计时器会清零，避免原地补播一步。
+        stepSoundTimer -= stepInterval;
+        float volume = Mathf.Lerp(slowStepVolume, fastStepVolume, speedRatio);
+        SoundManager.Instance.PlayStepSound(volume);
     }
 }

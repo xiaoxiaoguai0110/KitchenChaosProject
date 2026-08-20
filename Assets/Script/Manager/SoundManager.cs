@@ -8,6 +8,14 @@ public class SoundManager : MonoBehaviour
     [SerializeField]private AudioClipRefsSO audioClipRefsSO;
 
     private int volume = 5;
+    private OrderManager subscribedOrderManager;
+    private bool subscribedToStaticEvents;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
 
     private void Awake()
     {
@@ -16,18 +24,66 @@ public class SoundManager : MonoBehaviour
     }
     private void Start()
     {
-        OrderManager.Instance.OnRecipeSuccessed += OrderManager_OnRecipeSuccessed;
-        OrderManager.Instance.OnRecipeFailed += OrderManager_OnRecipeFailed;
-        CuttingCounter.OnCut += CuttingCounter_OnCut;
-        KitchenObjectHolder.OnDrop += KitchenObjectHolder_OnDrop;
-        KitchenObjectHolder.OnPickup += KitchenObjectHolder_OnPickup;
-        TrashCounter.OnObjectTrashed += TrashCounter_OnObjectTrashed;
+        SubscribeToEvents();
+    }
 
+    private void OnEnable()
+    {
+        SubscribeToEvents();
+    }
+
+    private void OnDisable()
+    {
+        UnsubscribeFromEvents();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this)
+            Instance = null;
+    }
+
+    private void SubscribeToEvents()
+    {
+        // 静态事件不需要等待场景单例；实例事件则在 Start 再补一次，兼容 Awake 顺序。
+        if (!subscribedToStaticEvents)
+        {
+            CuttingCounter.OnCut += CuttingCounter_OnCut;
+            KitchenObjectHolder.OnDrop += KitchenObjectHolder_OnDrop;
+            KitchenObjectHolder.OnPickup += KitchenObjectHolder_OnPickup;
+            TrashCounter.OnObjectTrashed += TrashCounter_OnObjectTrashed;
+            subscribedToStaticEvents = true;
+        }
+
+        if (subscribedOrderManager == null && OrderManager.Instance != null)
+        {
+            subscribedOrderManager = OrderManager.Instance;
+            subscribedOrderManager.OnRecipeSuccessed += OrderManager_OnRecipeSuccessed;
+            subscribedOrderManager.OnRecipeFailed += OrderManager_OnRecipeFailed;
+        }
+    }
+
+    private void UnsubscribeFromEvents()
+    {
+        if (subscribedToStaticEvents)
+        {
+            CuttingCounter.OnCut -= CuttingCounter_OnCut;
+            KitchenObjectHolder.OnDrop -= KitchenObjectHolder_OnDrop;
+            KitchenObjectHolder.OnPickup -= KitchenObjectHolder_OnPickup;
+            TrashCounter.OnObjectTrashed -= TrashCounter_OnObjectTrashed;
+            subscribedToStaticEvents = false;
+        }
+
+        if (subscribedOrderManager != null)
+        {
+            subscribedOrderManager.OnRecipeSuccessed -= OrderManager_OnRecipeSuccessed;
+            subscribedOrderManager.OnRecipeFailed -= OrderManager_OnRecipeFailed;
+            subscribedOrderManager = null;
+        }
     }
 
     private void TrashCounter_OnObjectTrashed(object sender, System.EventArgs e)
     {
-        print("11");
         PlaySound(audioClipRefsSO.trash);
     }
 

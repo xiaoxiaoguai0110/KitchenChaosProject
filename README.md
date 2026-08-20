@@ -1,8 +1,10 @@
-# KitchenChaos - 本地双人合作厨房模拟游戏
+# KitchenChaos - 单人 / AI 协作 / 本地双人厨房模拟游戏
 
 [![Build Status](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml/badge.svg)](https://github.com/xiaoxiaoguai0110/KitchenChaosProject/actions/workflows/build.yml)
 
-基于 Unity 开发的本地双人合作厨房模拟游戏，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
+基于 Unity 开发的厨房模拟游戏，支持单人挑战、AI 队友协作和本地双人合作，灵感来源于《胡闹厨房》。该项目从 Unity 教程项目起步，经过持续重构与扩展，已演变为一个包含 AI 队友系统、复杂决策逻辑和完整游戏循环的独立项目。
+
+项目后续打磨计划与任务状态见 [ROADMAP.md](ROADMAP.md)。
 
 ---
 
@@ -26,11 +28,14 @@
 | `AIPlayerTargetSelector` | 根据持有物、订单和柜台状态选择目标 |
 | `AIOrderPlanner` | 计算缺失食材、反查原料、匹配可继续完成的订单 |
 | `AIPlayerActionController` | 执行普通交互、切菜节奏和炉灶等待 |
-| `AIPlayerMovement` | 移动、转向及行走动画状态 |
+| `AIPlayerMovement` | NavMesh 路径规划、脱困重规划、目标超时、转向及行走动画状态 |
 
 - `AIPlayer` 从 500+ 行缩减为轻量入口，不再同时承担所有决策和动作细节
 - 目标选择、订单推理、移动和加工均可独立修改，降低新增菜谱或行为时的影响范围
 - 场景仍只需挂载原有 `AIPlayer` 组件，已有 ScriptableObject 配方引用无需迁移
+- 真人与 AI 共用 `CharacterController.Move()`，由 Unity 统一处理柜台和场景碰撞
+- NavMeshAgent 只负责路径规划和局部避障，不直接修改角色 Transform
+- 连续无有效位移时自动更换站位并重新规划；目标长期不可达时会放弃并重新选择
 
 **碰撞检测与主动避让：**
 - `AIPlayerTargetSelector.IsBlocked()` — 每帧检查目标柜台是否被玩家占用
@@ -57,14 +62,24 @@
   - `CuttingCounter.OnCut` → SoundManager 播放音效
   - `KitchenObjectHolder.OnDrop / OnPickup` → 全局物品拾取/放下音效
 - 避免直接依赖，新增 AI 等模块时不需要修改已有代码
+- 静态事件在 `SubsystemRegistration` 阶段自动重置，支持关闭 Domain Reload 的快速 Play Mode
+- 普通事件使用 `OnEnable` / `OnDisable` 对称订阅和解绑，避免重进场景后重复音效或重复 UI 回调
 
 ### 4. 双人输入系统
-- Player 1 使用 Unity New Input System（支持自定义键位）
-- Player 2 直接键盘轮询读取（`Input.GetKeyDown`），不受输入系统存档影响
-- 解决了"一个人改了键位，两个人的按键都受影响"的 bug
+- Player 1 和 Player 2 都使用独立的 Unity Input System Action Map，并分别保存改键结果
+- 键盘双人默认使用 `WASD + E/F` 与 `方向键 + 右 Ctrl/右 Shift`，数字小键盘仍作为 Player 2 备用键位
+- 单手柄会自动分配给 Player 2；双手柄分别分配给 Player 1 / Player 2，避免一个手柄同时操纵两人
+- 操作提示会根据玩家最后使用的键盘或手柄，切换对应的按键标识
 
-### 5. 版本控制与工程实践
-- 语义化版本号（v1.1 ~ v1.8），每次更新有明确版本记录
+### 5. 模式选择与菜单系统
+- 主菜单提供“单人模式”和“本地双人”入口；单人模式可继续选择独自挑战或启用 AI 厨师
+- `GameModeSelection` 在场景切换时保存当前模式，`GameManager` 根据模式分配 Player 2 / AI 控制权
+- 菜单采用 1920×1080 参考分辨率和 `Scale With Screen Size`，兼容不同窗口尺寸
+- 设置面板支持全屏/窗口切换，按钮提供鼠标与键盘选中反馈
+- ICE TextMeshPro 字体使用动态多图集，新增中文文案不再显示缺字方框
+
+### 6. 版本控制与工程实践
+- 语义化版本号（v1.1 ~ v1.15），每次更新有明确版本记录
 - 每次 commit 聚焦单一变更，commit message 规范化
 - 从单文件逐步重构为清晰的方法分拆，保证可维护性
 - SSH 部署，自动化推送流程
@@ -72,6 +87,16 @@
 ---
 
 ## 游戏玩法
+
+### 游戏模式
+
+- **单人挑战**：只启用 Player 1，不生成第二名角色控制逻辑
+- **单人 + AI**：Player 1 由玩家控制，Player 2 交给 AI 队友
+- **本地双人**：禁用 AI，由两名玩家共同操作 Player 1 和 Player 2
+
+模式从 `Assets/Scenes/0-GameMenu.unity` 选择，进入游戏场景后由 `GameManager` 自动配置控制权。
+
+### 核心循环
 
 1. **拿食材** → ContainerCounter 获取原料
 2. **加工处理** → CuttingCounter 切菜 / StoveCounter 烹饪
@@ -100,6 +125,56 @@
 ---
 
 ## 版本记录
+
+### v1.15 - 移动手感、交互提示与即时反馈
+- 真人与 AI 共用加减速后的实际水平速度，转向、行走动画和脚步声会随当前速度平滑变化
+- 交互检测从单射线升级为范围候选评分，综合朝向、距离、遮挡和当前选择稳定性，减少柜台高亮跳动
+- Player 1 / Player 2 新增独立交互提示，自动显示当前键盘或手柄按键；失败操作会给出明确原因
+- 新增运行时反馈中心：拾取与放下弹跳、切菜粒子和轻微镜头震动、炉灶状态跳字、送餐成功/失败反馈
+- 暂停期间统一冻结玩家、AI、订单、炉灶和盘子等玩法模拟，重新开始、返回菜单及结算时会恢复时间缩放
+- 双人同时靠近柜台时分别维护选择状态，一名玩家移开不会错误关闭另一名玩家的柜台高亮
+
+### v1.14 - 双玩家输入、结算统计与编码清理
+- Player 1 / Player 2 全部迁移到 Input System Action Map，支持键盘双人和最多两个手柄
+- Player 2 默认改用方向键、右 Ctrl、右 Shift，不再依赖数字小键盘，并可在设置页独立改键
+- 设置页新增玩家切换按钮，交互提示根据最后使用的设备显示 `K`（键盘）或 `G`（手柄）标识
+- 暂停页增加重新开始；结算页显示成功订单、失败订单和最终分数
+- 成功订单计 `100` 分，错误上菜与倒计时结束时未完成订单各扣 `25` 分，最低为 `0`
+- 所有 C# 脚本完成严格 UTF-8 扫描，修复乱码文字并增加 `.editorconfig` 编码约束
+
+### v1.13 - AI NavMesh 寻路、脱困与事件生命周期
+- AI 改用 NavMesh 计算完整路径，CharacterController 仍作为唯一实际位移入口
+- 围绕柜台采样多个可交互站位并选择较短完整路径，不再沿直线穿越厨房布局
+- 连续 `2s` 无有效位移时重新规划，最多重试 `2` 次；单目标到达时间超过 `12s` 时自动放弃
+- 玩家移动时参与局部避障，停止后使用 NavMesh Carving；玩家占用的柜台会被 AI 短暂排除
+- AI Agent 半径与 KitchenAgent 烘焙半径统一为 `0.65`，移动速度统一为 `5`
+- 静态事件改用 `RuntimeInitializeOnLoadMethod(SubsystemRegistration)` 自动重置
+- GameInput、Player、AI、Manager、UI 和按钮监听统一使用 `OnEnable` / `OnDisable` 管理
+- 新增事件生命周期 EditMode 测试；AI 冒烟测试与 Unity 脚本编译均通过
+
+### v1.12 - 游戏内 UI 重做与 NavMesh 基础配置
+- 订单列表、倒计时、游戏时钟、暂停、设置和结算界面统一为主菜单的深棕、橙色、奶油白与青绿色视觉风格
+- 订单改为卡片布局；游戏时钟固定在右上角，并在最后 10 秒切换警告色与脉冲反馈
+- 暂停、设置和结算面板加入不受 `Time.timeScale` 影响的弹出动画
+- 结算界面新增“再来一局”和“返回菜单”，设置界面改用百分比音量与整齐的按键绑定列表
+- 新增 `UIPopupAnimator` 与 `GameSceneUIBuilder`，集中复用弹窗动效并支持重复应用游戏内 UI 风格
+- 引入 Unity AI Navigation `1.1.7`，新增 `KitchenAgent`、`NavGround`、`NavObstacle`、`NavMeshSurface` 与厨房导航烘焙数据
+- AI 角色已配置对应的 `NavMeshAgent`；当前版本完成寻路基础设施，路径跟随与卡住重规划仍列入后续实现
+- 补充 UI 事件解绑、倒计时不再短暂显示 0，并修正游戏结束后时钟仍显示的问题
+
+### v1.11 - 主菜单与游戏模式
+- 重做主菜单视觉层级，新增悬停/选中反馈与响应式 Canvas 缩放
+- 新增单人挑战、单人 + AI、本地双人三种游玩方式
+- `GameManager` 按模式启用 Player 2 或 AI，避免真人输入与 AI 抢占同一角色
+- 新增基础显示设置面板，支持全屏与窗口模式切换
+- ICE SDF 改为动态多图集，修复新增中文文案显示方框的问题
+- 新增 `ROADMAP.md`，记录后续打磨优先级和验收标准
+
+### v1.10 - CharacterController 移动重构
+- 玩家和 AI 从“动态 Rigidbody + 直接修改 Transform”迁移到 `CharacterController.Move()`
+- 移除角色对象上的 Rigidbody 与独立 CapsuleCollider，避免物理系统和 Transform 同时控制位置
+- 真人和 AI 复用 `Player.Move()` 移动入口，统一碰撞行为
+- 玩家移动从 `FixedUpdate()` 调整到 `Update()`，与 CharacterController 的逐帧移动方式一致
 
 ### v1.9 - AI 玩家模块化重构
 - 将单文件 AI 拆分为状态调度、目标选择、订单规划、动作控制和移动控制 5 个职责模块
@@ -169,6 +244,7 @@ Assets/Script/
 ├── PlateKitchenObject.cs       # 盘子（物品容器）
 ├── Manager/
 │   ├── GameManager.cs          # 全局状态机
+│   ├── GameModeSelection.cs    # 菜单模式选择与场景间状态
 │   ├── OrderManager.cs         # 订单系统
 │   ├── SoundManager.cs         # 音效管理
 │   └── MusicManager.cs         # 音乐管理
@@ -183,6 +259,8 @@ Assets/Script/
 │   └── TrashCounter.cs         # 垃圾桶
 ├── ScriptObjects/              # 数据配置（ScriptableObject）
 └── UI/
+    ├── GameMenuUI.cs           # 主菜单、模式选择和显示设置
+    ├── MenuButtonVisual.cs     # 菜单按钮悬停与选中动画
     ├── OrderListUI.cs          # 订单列表 UI
     └── RecipeUI.cs             # 订单模板 UI
 ```
@@ -196,8 +274,8 @@ Assets/Script/
 | Unity 2022.3 | 游戏引擎 |
 | C# | 全部游戏逻辑 |
 | ScriptableObject | 数据驱动架构 |
-| Unity New Input System | Player 1 输入 |
-| Direct Input Polling | Player 2 输入 |
+| Unity New Input System | 双玩家键盘、手柄与改键输入 |
+| CharacterController | 玩家与 AI 的移动碰撞 |
 | SSH / Git | 版本控制 |
 | GitHub Actions | CI/CD 持续集成 |
 | C# Events | 模块通信 |
