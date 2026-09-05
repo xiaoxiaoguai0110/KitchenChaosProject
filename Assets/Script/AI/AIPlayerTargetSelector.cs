@@ -3,12 +3,26 @@ using UnityEngine;
 
 internal sealed class AIPlayerTargetSelector
 {
+    private const float DeliveryPriority = 1100f;
+    private const float ReadyPlatePriority = 1000f;
+    private const float ProcessingPriority = 900f;
+    private const float IngredientPickupPriority = 850f;
+    private const float PlateMergePriority = 800f;
+    private const float PlatePickupPriority = 700f;
+    private const float IngredientSourcePriority = 650f;
+    private const float EmptyCounterPriority = 400f;
+    private const float ReservedTaskBonus = 100f;
+    private const float DistancePenaltyPerMeter = 4f;
+
     private readonly Player player;
     private readonly BaseCounter[] counters;
     private readonly OrderManager orderManager;
     private readonly CuttingRecipeListSO cuttingRecipeList;
     private readonly FryingRecipeListSO fryingRecipeList;
     private readonly AIOrderPlanner orderPlanner;
+
+    private RecipeSO reservedOrder;
+    private KitchenObjectSO reservedIngredient;
 
     public AIPlayerTargetSelector(
         Player player,
@@ -27,20 +41,42 @@ internal sealed class AIPlayerTargetSelector
 
     public BaseCounter PickTarget(BaseCounter excludedCounter = null)
     {
-        List<BaseCounter> availableCounters = new List<BaseCounter>();
-        if (player.IsHaveKitchenObject())
-            FindTargetsForHeldObject(availableCounters);
-        else
-            FindTargetsForEmptyHands(availableCounters);
+        RefreshReservation();
+        List<BaseCounter> availableCounters = BuildCandidateList();
 
         // 真人正在使用或刚刚导致寻路失败的柜台会被短暂排除，
         // 避免 AI 每帧重新选择同一个繁忙目标。
         if (excludedCounter != null)
             availableCounters.RemoveAll(counter => counter == excludedCounter);
 
-        return availableCounters.Count == 0
-            ? null
-            : availableCounters[Random.Range(0, availableCounters.Count)];
+        if (availableCounters.Count == 0 && !player.IsHaveKitchenObject() && reservedIngredient != null)
+        {
+            // 预约食材找不到来源时释放任务，再尝试一次其他订单，避免 AI 永久等待无效目标。
+            ClearReservation();
+            availableCounters = BuildCandidateList();
+            if (excludedCounter != null)
+                availableCounters.RemoveAll(counter => counter == excludedCounter);
+        }
+
+        return SelectHighestScoringTarget(availableCounters);
+    }
+
+    public bool ShouldAbandonTarget(BaseCounter targetCounter)
+    {
+        if (targetCounter is not ContainerCounter
+            || player.IsHaveKitchenObject()
+            || reservedIngredient == null)
+        {
+            return false;
+        }
+
+        if (!orderPlanner.IsIngredientAvailableOrInProgress(reservedIngredient))
+            return false;
+
+        // AI 走向原料箱期间，若真人已经领取或开始加工同一食材，
+        // 立即释放预约并重新规划，避免两人做出重复原料。
+        ClearReservation();
+        return true;
     }
 
     public bool IsBlocked(BaseCounter targetCounter)
@@ -58,11 +94,45 @@ internal sealed class AIPlayerTargetSelector
         return true;
     }
 
+    private List<BaseCounter> BuildCandidateList()
+    {
+        List<BaseCounter> availableCounters = new List<BaseCounter>();
+        if (player.IsHaveKitchenObject())
+            FindTargetsForHeldObject(availableCounters);
+        else
+            FindTargetsForEmptyHands(availableCounters);
+        return availableCounters;
+    }
+
     private void FindTargetsForEmptyHands(List<BaseCounter> availableCounters)
     {
         AddMatchingPlates(availableCounters);
-        if (availableCounters.Count == 0)
-            AddIngredientsOrPlates(availableCounters);
+        if (availableCounters.Count > 0)
+            return;
+
+        // 已经放在柜台上的半成品优先继续加工，不再重新领取一份相同原料。
+        AddProcessableLooseIngredients(availableCounters);
+        if (availableCounters.Count > 0)
+            return;
+
+        if (EnsureReservation())
+        {
+            KitchenObjectSO rawIngredient = orderPlanner.GetRawIngredient(reservedIngredient);
+            foreach (BaseCounter counter in counters)
+            {
+                if (counter is ContainerCounter container
+                    && container.KitchenObjectSO == rawIngredient)
+                {
+                    AddCounterUnique(availableCounters, counter);
+                }
+            }
+
+            if (availableCounters.Count > 0)
+                return;
+        }
+
+        if (orderManager.GetOrderList().Count > 0 && HasUnplatedFood())
+            AddCountersOfType<PlatesCounter>(availableCounters);
     }
 
     private void AddMatchingPlates(List<BaseCounter> availableCounters)
@@ -75,45 +145,41 @@ internal sealed class AIPlayerTargetSelector
                 && plate.GetKitchenObjectSOList().Count > 0
                 && orderManager.IsPlateMatchingAnyOrder(plate))
             {
-                availableCounters.Add(counter);
+                AddCounterUnique(availableCounters, counter);
             }
         }
     }
 
-    private void AddIngredientsOrPlates(List<BaseCounter> availableCounters)
+    private void AddProcessableLooseIngredients(List<BaseCounter> availableCounters)
     {
-        List<KitchenObjectSO> missingIngredients = orderPlanner.GetMissingIngredients();
-        if (missingIngredients.Count > 0)
+        foreach (BaseCounter counter in counters)
         {
-            List<KitchenObjectSO> rawIngredients = orderPlanner.GetRawIngredients(missingIngredients);
-            foreach (BaseCounter counter in counters)
+            if (counter is not ClearCounter clearCounter || !clearCounter.IsHaveKitchenObject())
+                continue;
+
+            KitchenObject kitchenObject = clearCounter.GetKitchenObject();
+            KitchenObjectSO ingredient = kitchenObject.GetKitchenObjectSO();
+            if (!kitchenObject.TryGetComponent(out PlateKitchenObject _)
+                && CanProcess(ingredient)
+                && orderPlanner.CanContributeToActiveOrder(ingredient))
             {
-                if (counter is ContainerCounter container
-                    && rawIngredients.Contains(container.KitchenObjectSO))
-                {
-                    availableCounters.Add(counter);
-                }
+                AddCounterUnique(availableCounters, counter);
             }
         }
-        else
-        {
-            AddCountersOfType<ContainerCounter>(availableCounters);
-        }
-
-        if (orderManager.GetOrderList().Count > 0 && HasUnplatedFood())
-            AddCountersOfType<PlatesCounter>(availableCounters);
-
-        if (availableCounters.Count == 0)
-            AddCountersOfType<ContainerCounter>(availableCounters);
     }
 
     private bool HasUnplatedFood()
     {
         foreach (BaseCounter counter in counters)
         {
-            if (counter is ClearCounter clearCounter
-                && clearCounter.IsHaveKitchenObject()
-                && !clearCounter.GetKitchenObject().TryGetComponent(out PlateKitchenObject _))
+            if (counter is not ClearCounter clearCounter || !clearCounter.IsHaveKitchenObject())
+                continue;
+
+            KitchenObject kitchenObject = clearCounter.GetKitchenObject();
+            KitchenObjectSO ingredient = kitchenObject.GetKitchenObjectSO();
+            if (!kitchenObject.TryGetComponent(out PlateKitchenObject _)
+                && !CanProcess(ingredient)
+                && orderPlanner.CanContributeToActiveOrder(ingredient))
             {
                 return true;
             }
@@ -137,7 +203,10 @@ internal sealed class AIPlayerTargetSelector
             return;
         }
 
-        RecipeSO targetOrder = orderPlanner.FindCompatibleOrder(plate);
+        RecipeSO targetOrder = reservedOrder;
+        if (!orderPlanner.IsPlateCompatibleWithOrder(targetOrder, plate))
+            targetOrder = orderPlanner.FindCompatibleOrder(plate);
+
         if (targetOrder != null)
         {
             List<KitchenObjectSO> neededIngredients = orderPlanner.GetMissingFromPlate(targetOrder, plate);
@@ -147,13 +216,13 @@ internal sealed class AIPlayerTargetSelector
                     && clearCounter.IsHaveKitchenObject()
                     && neededIngredients.Contains(clearCounter.GetKitchenObject().GetKitchenObjectSO()))
                 {
-                    availableCounters.Add(counter);
+                    AddCounterUnique(availableCounters, counter);
                 }
             }
         }
 
         if (availableCounters.Count == 0)
-            AddCountersOfType<ClearCounter>(availableCounters);
+            AddEmptyClearCounters(availableCounters);
     }
 
     private void AddTargetsForIngredient(List<BaseCounter> availableCounters)
@@ -161,13 +230,13 @@ internal sealed class AIPlayerTargetSelector
         KitchenObjectSO heldObject = player.GetKitchenObject().GetKitchenObjectSO();
         if (cuttingRecipeList != null && cuttingRecipeList.TryGetCuttingRecipe(heldObject, out _))
         {
-            AddCountersOfType<CuttingCounter>(availableCounters);
+            AddEmptyCountersOfType<CuttingCounter>(availableCounters);
             return;
         }
 
         if (fryingRecipeList != null && fryingRecipeList.TryGetFryingRecipe(heldObject, out _))
         {
-            AddCountersOfType<StoveCounter>(availableCounters);
+            AddEmptyCountersOfType<StoveCounter>(availableCounters);
             return;
         }
 
@@ -175,15 +244,123 @@ internal sealed class AIPlayerTargetSelector
         {
             if (counter is ClearCounter clearCounter
                 && clearCounter.IsHaveKitchenObject()
-                && clearCounter.GetKitchenObject().TryGetComponent(out PlateKitchenObject _))
+                && clearCounter.GetKitchenObject().TryGetComponent(out PlateKitchenObject plate)
+                && plate.CanAddKitchenObjectSO(heldObject))
             {
-                availableCounters.Add(counter);
-                break;
+                AddCounterUnique(availableCounters, counter);
             }
         }
 
         if (availableCounters.Count == 0)
-            AddCountersOfType<ClearCounter>(availableCounters);
+            AddEmptyClearCounters(availableCounters);
+    }
+
+    private bool EnsureReservation()
+    {
+        if (reservedOrder != null && reservedIngredient != null)
+            return true;
+
+        RecipeSO order = orderPlanner.FindOrderNeedingWork();
+        if (order == null)
+            return false;
+
+        KitchenObjectSO ingredient = orderPlanner.FindHighestPriorityIngredient(
+            orderPlanner.GetMissingIngredients(order));
+        if (ingredient == null)
+            return false;
+
+        // 预约保存“为哪张订单做哪种最终食材”，让 AI 在多次移动/加工之间保持同一目标。
+        reservedOrder = order;
+        reservedIngredient = ingredient;
+        return true;
+    }
+
+    private void RefreshReservation()
+    {
+        if (reservedOrder == null || reservedIngredient == null)
+            return;
+
+        bool orderEnded = !orderPlanner.IsOrderActive(reservedOrder);
+        bool workAlreadyCovered = !player.IsHaveKitchenObject()
+            && orderPlanner.IsIngredientAvailableOrInProgress(reservedIngredient);
+        if (orderEnded || workAlreadyCovered)
+            ClearReservation();
+    }
+
+    private void ClearReservation()
+    {
+        reservedOrder = null;
+        reservedIngredient = null;
+    }
+
+    private bool CanProcess(KitchenObjectSO ingredient)
+    {
+        return (cuttingRecipeList != null && cuttingRecipeList.TryGetCuttingRecipe(ingredient, out _))
+            || (fryingRecipeList != null && fryingRecipeList.TryGetFryingRecipe(ingredient, out _));
+    }
+
+    private BaseCounter SelectHighestScoringTarget(List<BaseCounter> availableCounters)
+    {
+        BaseCounter bestCounter = null;
+        float bestScore = float.NegativeInfinity;
+        foreach (BaseCounter counter in availableCounters)
+        {
+            float score = GetTargetScore(counter);
+            if (score <= bestScore)
+                continue;
+
+            bestScore = score;
+            bestCounter = counter;
+        }
+        return bestCounter;
+    }
+
+    private float GetTargetScore(BaseCounter counter)
+    {
+        float score = EmptyCounterPriority;
+        if (counter is DeliveryCounter)
+            score = DeliveryPriority;
+        else if (counter is CuttingCounter || counter is StoveCounter)
+            score = ProcessingPriority;
+        else if (counter is PlatesCounter)
+            score = PlatePickupPriority;
+        else if (counter is ContainerCounter container)
+        {
+            score = IngredientSourcePriority;
+            if (reservedIngredient != null
+                && container.KitchenObjectSO == orderPlanner.GetRawIngredient(reservedIngredient))
+            {
+                score += ReservedTaskBonus;
+            }
+        }
+        else if (counter is ClearCounter clearCounter && clearCounter.IsHaveKitchenObject())
+        {
+            KitchenObject kitchenObject = clearCounter.GetKitchenObject();
+            if (kitchenObject.TryGetComponent(out PlateKitchenObject plate))
+            {
+                score = orderManager.IsPlateMatchingAnyOrder(plate)
+                    ? ReadyPlatePriority
+                    : PlateMergePriority;
+            }
+            else
+            {
+                score = IngredientPickupPriority;
+            }
+        }
+
+        // 同类目标才按路程微调；高价值行为（交付、加工）不会被最近的空柜台抢走。
+        Vector3 offset = counter.transform.position - player.transform.position;
+        offset.y = 0f;
+        return score - offset.magnitude * DistancePenaltyPerMeter;
+    }
+
+    private void AddEmptyClearCounters(List<BaseCounter> availableCounters)
+    {
+        foreach (BaseCounter counter in counters)
+        {
+            if (counter is ClearCounter && !counter.IsHaveKitchenObject())
+                AddCounterUnique(availableCounters, counter);
+        }
     }
 
     private void AddCountersOfType<T>(List<BaseCounter> availableCounters) where T : BaseCounter
@@ -191,7 +368,22 @@ internal sealed class AIPlayerTargetSelector
         foreach (BaseCounter counter in counters)
         {
             if (counter is T)
-                availableCounters.Add(counter);
+                AddCounterUnique(availableCounters, counter);
         }
+    }
+
+    private void AddEmptyCountersOfType<T>(List<BaseCounter> availableCounters) where T : BaseCounter
+    {
+        foreach (BaseCounter counter in counters)
+        {
+            if (counter is T && !counter.IsHaveKitchenObject())
+                AddCounterUnique(availableCounters, counter);
+        }
+    }
+
+    private static void AddCounterUnique(List<BaseCounter> availableCounters, BaseCounter counter)
+    {
+        if (counter != null && !availableCounters.Contains(counter))
+            availableCounters.Add(counter);
     }
 }

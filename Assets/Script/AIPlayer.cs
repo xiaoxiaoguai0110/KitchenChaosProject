@@ -155,6 +155,13 @@ public class AIPlayer : MonoBehaviour
             return;
         }
 
+        // 走向原料箱时也持续检查预约；真人若已接手同一食材，AI 会立即重新选任务。
+        if (targetSelector.ShouldAbandonTarget(targetCounter))
+        {
+            ChangeToIdle(0f);
+            return;
+        }
+
         if (targetSelector.IsBlocked(targetCounter))
         {
             AvoidCounterTemporarily(targetCounter, BusyTargetRetryDelay);
